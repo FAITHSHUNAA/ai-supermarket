@@ -1,0 +1,9 @@
+node_modules/
+client/dist/
+data/*.json
+data/*.tmp
+_study/
+.env
+examples/.oauth-verifier
+*.log
+.DS_Store

@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: ai-supermarket
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: node server/index.js
+    envVars:
+      - key: NODE_VERSION
+        value: "22"

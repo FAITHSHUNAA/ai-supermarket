@@ -1,0 +1,91 @@
+import { useState } from "react";
+import { Link, NavLink, Outlet } from "react-router-dom";
+import { useSession } from "./session";
+
+const links = [
+  ["/", "首页"],
+  ["/store", "AI 超市"],
+  ["/membership", "会员中心"],
+  ["/recharge", "充值中心"],
+];
+
+export function Layout() {
+  const { user, settings } = useSession();
+  const [open, setOpen] = useState(false);
+  const brand = settings?.brand_name || "AI 超市";
+  return (
+    <div className="shell">
+      <a className="skip" href="#app-content">
+        跳到主要内容
+      </a>
+      <header className="nav">
+        <Link className="brand" to="/" onClick={() => setOpen(false)}>
+          <img src="/favicon.svg" alt="" />
+          <span>
+            <strong>{brand}</strong>
+            <small>AI MARKET</small>
+          </span>
+        </Link>
+        <nav className={open ? "links open" : "links"} aria-label="平台导航">
+          {links.map(([to, label]) => (
+            <NavLink key={to} to={to} end={to === "/"} onClick={() => setOpen(false)}>
+              {label}
+            </NavLink>
+          ))}
+        </nav>
+        <div className="nav-side">
+          <NavLink to="/register-developer">开发者中心</NavLink>
+          {user ? (
+            <NavLink className="btn tiny" to="/profile">
+              {user.name}
+            </NavLink>
+          ) : (
+            <NavLink className="btn tiny" to="/login">
+              登录
+            </NavLink>
+          )}
+          <button className="menu-btn" type="button" onClick={() => setOpen((value) => !value)}>
+            菜单
+          </button>
+        </div>
+      </header>
+      <main id="app-content" className="page">
+        <Outlet />
+      </main>
+      <footer className="footer">
+        <div>
+          <strong>{brand}</strong>
+          <p>{settings?.description || "发现 AI 应用、调用模型，一站管理会员与积分。"}</p>
+          <p className="faint">{settings?.filing_text}</p>
+        </div>
+        <div>
+          <h2>产品服务</h2>
+          <ul>
+            <li><Link to="/store">应用商店</Link></li>
+            <li><Link to="/recharge">充值中心</Link></li>
+            <li><Link to="/membership">订阅服务</Link></li>
+            <li><Link to="/profile">个人中心</Link></li>
+          </ul>
+        </div>
+        <div>
+          <h2>开发者资源</h2>
+          <ul>
+            <li><Link to="/docs">接入文档</Link></li>
+            <li><Link to="/register-developer">入驻成为开发者</Link></li>
+            <li><Link to="/developer">开发者控制台</Link></li>
+            <li><Link to="/design">设计规范</Link></li>
+          </ul>
+        </div>
+        <div>
+          <h2>关于与支持</h2>
+          <ul>
+            <li><Link to="/about">关于我们</Link></li>
+            <li><Link to="/legal/terms-of-service">用户协议</Link></li>
+            <li><Link to="/legal/privacy-policy">隐私政策</Link></li>
+            <li><Link to="/admin">管理后台</Link></li>
+          </ul>
+        </div>
+      </footer>
+    </div>
+  );
+}

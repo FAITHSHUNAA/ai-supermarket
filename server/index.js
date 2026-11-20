@@ -86,7 +86,7 @@ if (fs.existsSync(dist)) {
 
 if (require.main === module) {
   const port = Number(process.env.PORT || 8787);
-  app.listen(port, "0.0.0.0", () => {
+  app.listen(port, process.env.BIND_ADDRESS || "0.0.0.0", () => {
     console.log(`AI 超市正在监听 http://127.0.0.1:${port}`);
   });
 }

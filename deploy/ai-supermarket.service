@@ -1,0 +1,23 @@
+[Unit]
+Description=AI Supermarket
+After=network.target
+
+[Service]
+DynamicUser=yes
+StateDirectory=ai-supermarket
+WorkingDirectory=/opt/ai-supermarket/current
+Environment=NODE_ENV=production
+Environment=DATA_DIR=/var/lib/ai-supermarket
+Environment=BIND_ADDRESS=127.0.0.1
+Environment=PORT=8787
+ExecStart=/opt/ai-supermarket/runtime/node server/index.js
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

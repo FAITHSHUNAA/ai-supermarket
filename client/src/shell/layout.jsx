@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useSession } from "./session";
 
 const links = [
@@ -10,7 +10,9 @@ const links = [
 ];
 
 export function Layout() {
-  const { user, settings } = useSession();
+  const { user, settings, catalogOnly } = useSession();
+  const { pathname } = useLocation();
+  const publicPage = /^\/(?:$|store(?:\/|$)|docs(?:\/|$)|legal\/|about$|design$|membership$|recharge$)/.test(pathname);
   const [open, setOpen] = useState(false);
   const brand = settings?.brand_name || "AI 超市";
   return (
@@ -50,7 +52,8 @@ export function Layout() {
         </div>
       </header>
       <main id="app-content" className="page">
-        <Outlet />
+        {catalogOnly && <p className="notice">当前开放商品目录与文档。账号、上架申请和交易尚未开放。 <Link to="/docs/listing">查看上架规范</Link></p>}
+        {catalogOnly && !publicPage ? <Link className="btn" to="/store">浏览商品目录</Link> : <Outlet />}
       </main>
       <footer className="footer">
         <div>

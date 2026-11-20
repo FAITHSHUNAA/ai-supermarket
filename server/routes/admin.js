@@ -163,8 +163,15 @@ function runAction(db, admin, body) {
 function reviewOffer(db, admin, body) {
   const offer = db.offers.find((item) => item.id === body.id);
   if (!offer) throw new HttpError(404, "offer_not_found", "找不到报价");
+  if (offer.status !== "pending") throw new HttpError(409, "review_closed", "该版本已处理");
+  if (body.approve && !offer.listing) throw new HttpError(409, "listing_required", "旧版申请缺少交付说明，请退回补充");
+  if (!body.approve && !String(body.reason || "").trim()) throw new HttpError(400, "reason_required", "请填写退回原因");
+  offer.reason = body.approve ? "" : String(body.reason).trim().slice(0, 500);
   offer.status = body.approve ? "approved" : "rejected";
   if (body.approve) {
+    for (const previous of db.offers) {
+      if (previous !== offer && previous.clientId === offer.clientId && previous.status === "approved") previous.status = "superseded";
+    }
     const client = db.clients.find((item) => item.id === offer.clientId);
     if (client && client.status === "draft") client.status = "listed";
   }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
 import { Markdown, Notice } from "../shell/ui";
+import listingGuide from "../../../docs/商品上架规范.md?raw";
 
 export function Docs() {
   const params = useParams();
@@ -13,6 +14,7 @@ export function Docs() {
         <Link to="/docs/models">模型列表</Link>
         <Link to="/docs/models/pricing">模型价格</Link>
         <Link to="/docs/api">数据 API</Link>
+        <Link to="/docs/listing">商品上架规范</Link>
         <Link to="/docs/billing/recharge">积分充值</Link>
         <Link to="/docs/billing/membership">会员升级</Link>
         <a href="/llms.txt">llms.txt</a>
@@ -30,6 +32,7 @@ export function Docs() {
 
 function DocBody({ kind }) {
   if (!kind) return <Overview />;
+  if (kind === "listing") return <article style={{whiteSpace:"pre-wrap"}}>{listingGuide}</article>;
   if (kind === "models") return <ModelList />;
   if (kind === "models/pricing") return <Pricing />;
   if (kind.startsWith("models/")) return <ModelDoc modelKey={kind.slice("models/".length)} />;

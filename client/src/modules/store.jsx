@@ -1,3 +1,4 @@
+import { ListingDetails } from "./listing";
 import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api";
@@ -137,6 +138,7 @@ export function AppDetail() {
       <div className="faint">{app.category?.name} · 开发者 {app.developer?.name}</div>
       <h2>{app.name}</h2>
       <p className="lede">{app.description}</p>
+      <ListingDetails listing={app.commercial_offer?.listing} />
       <Notice error={error}>{message}</Notice>
       <div className="grid-2">
         <article className="card">
@@ -157,11 +159,11 @@ export function AppDetail() {
           ) : null}
         </article>
         <article className="card">
-          <h3>打开体验</h3>
+          {app.commercial_offer?.listing ? <><h3>商品交付</h3>{app.delivery_url ? <a className="btn" href={app.delivery_url} target="_blank" rel="noreferrer">打开交付入口</a> : <p>开通后可领取。</p>}</> : <><h3>打开体验</h3>
           <p className="muted">体验会计入你的积分。未登录不能调用。</p>
           <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} />
           <button className="btn" type="button" onClick={run}>发送</button>
-          {output.startsWith("/v1/") ? <img className="poster" alt="生成结果" src={output} /> : <div className="bubble">{output}</div>}
+          {output.startsWith("/v1/") ? <img className="poster" alt="生成结果" src={output} /> : <div className="bubble">{output}</div>}</>}
         </article>
       </div>
     </section>

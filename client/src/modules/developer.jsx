@@ -1,3 +1,4 @@
+import { ListingForm } from "./listing";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, yuan } from "../api";
@@ -202,6 +203,7 @@ function Clients() {
   return (
     <article className="card">
       <h3>应用客户端</h3>
+      <Link to="/docs/listing">查看商品上架规范及填写模板</Link>
       <Notice error={error}>{secret}</Notice>
       <Field label="名称"><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></Field>
       <Field label="简介"><input value={form.summary} onChange={(event) => setForm({ ...form, summary: event.target.value })} /></Field>
@@ -216,25 +218,10 @@ function Clients() {
         <div key={item.client_id} style={{ marginTop: 14 }}>
           <strong>{item.name}</strong>
           <span className="muted"> · {item.status} · {item.client_id}</span>
-          <Offer clientId={item.client_id} />
+          <ListingForm clientId={item.client_id} />
         </div>
       ))}
     </article>
-  );
-}
-
-function Offer({ clientId }) {
-  const [price, setPrice] = useState(100);
-  const [message, setMessage] = useState("");
-  return (
-    <div className="row">
-      <input style={{ maxWidth: 120 }} type="number" value={price} onChange={(event) => setPrice(event.target.value)} />
-      <button className="btn tiny ghost" type="button" onClick={async () => {
-        await api(`/v1/developer/clients/${clientId}/commercial-offer`, { method: "POST", body: { price_points: Number(price), title: `${price} 积分开通` } });
-        setMessage("报价已提交，等待审核");
-      }}>提交报价</button>
-      <span className="muted">{message}</span>
-    </div>
   );
 }
 

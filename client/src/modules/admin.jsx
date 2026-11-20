@@ -1,3 +1,4 @@
+import { ListingDetails } from "./listing";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { api, yuan } from "../api";
@@ -186,12 +187,12 @@ function Offers({ data, act }) {
       rows={data.offers}
       render={(offer) => (
         <>
-          <td>{offer.clientId}</td>
+          <td>{data.clients.find(item => item.client_id === offer.clientId)?.name || offer.clientId}<ListingDetails listing={offer.listing} />{offer.listing && <a href={offer.listing.delivery_url} target="_blank" rel="noreferrer">检查交付入口</a>}{offer.reason && <p>{offer.reason}</p>}</td>
           <td>{offer.pricePoints}</td>
           <td>{offer.status}</td>
           <td className="row">
-            <button className="btn tiny" type="button" onClick={() => act({ type: "offer.review", id: offer.id, approve: true })}>通过并上架</button>
-            <button className="btn tiny ghost" type="button" onClick={() => act({ type: "offer.review", id: offer.id, approve: false })}>拒绝</button>
+            <button className="btn tiny" type="button" disabled={offer.status !== "pending" || !offer.listing} onClick={() => act({ type: "offer.review", id: offer.id, approve: true })}>通过并上架</button>
+            <button className="btn tiny ghost" type="button" disabled={offer.status !== "pending"} onClick={() => { const reason = window.prompt("请说明需要修改的内容"); if (reason?.trim()) act({ type: "offer.review", id: offer.id, approve: false, reason }); }}>拒绝</button>
           </td>
         </>
       )}

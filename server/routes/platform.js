@@ -126,10 +126,11 @@ function mount(app, ctx) {
   app.get("/v1/platform/apps/:clientId", (req, res) => {
     const db = ctx.get();
     const client = db.clients.find((item) => item.id === req.params.clientId);
-    if (!client) return res.status(404).json({ error: "app_not_found", message: "找不到应用" });
+    if (!client || client.status !== "listed" || client.environment !== "production") return res.status(404).json({ error: "app_not_found", message: "找不到应用" });
     const user = domain.resolveActor(db, req).user;
     const owned = user ? domain.activeEntitlements(db, user.id).some((item) => item.clientId === client.id) : false;
-    res.json({ ...domain.publicClient(db, client), owned });
+    const offer = db.offers.find(item => item.clientId === client.id && item.status === "approved");
+    res.json({ ...domain.publicClient(db, client), owned, delivery_url: owned ? offer?.listing?.delivery_url : undefined });
   });
 
   app.get(

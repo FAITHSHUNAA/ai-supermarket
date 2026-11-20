@@ -472,6 +472,7 @@ function publicClient(db, client) {
       title: offer.title,
       billing: offer.billing,
       status: offer.status,
+      listing: offer.listing && Object.fromEntries(Object.entries(offer.listing).filter(([key]) => key !== "delivery_url")),
     },
     category: category && { id: category.id, name: category.name, parent_id: category.parentId },
     developer: owner ? { id: owner.id, name: owner.name } : null,
@@ -921,8 +922,11 @@ function createClient(db, user, body) {
 
 function submitOffer(db, user, clientId, body) {
   const client = must(ownedClient(db, user, clientId), 404, "client_not_found", "找不到应用");
-  const price = Number(body.price_points);
-  if (!Number.isFinite(price) || price < 0) throw new HttpError(400, "invalid_price", "价格不正确");
+  if (db.offers.some(item => item.clientId === client.id && item.status === "pending")) throw new HttpError(409, "review_pending", "已有待审核版本");
+  const price = body.price_points;
+  if (!Number.isSafeInteger(price) || price < 0) throw new HttpError(400, "invalid_price", "价格须为非负整数积分");
+  if (body.billing && body.billing !== "once") throw new HttpError(400, "invalid_billing", "仅支持一次性开通");
+  const listing = require("./listing").validateListing(body.listing);
   const modelKey = client.experience && client.experience.modelKey;
   const model = db.models.find((item) => item.modelKey === modelKey);
   if (body.call_price_points && model && Number(body.call_price_points) < model.defaultPoints) {
@@ -932,6 +936,7 @@ function submitOffer(db, user, clientId, body) {
     id: id("offer"),
     clientId: client.id,
     pricePoints: price,
+    listing,
     callPricePoints: body.call_price_points ? Number(body.call_price_points) : null,
     billing: body.billing || "once",
     title: body.title || `${price} 积分开通`,

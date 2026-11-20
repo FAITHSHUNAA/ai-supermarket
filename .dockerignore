@@ -12,3 +12,5 @@
 !client/vite.config.js
 !examples/
 !examples/*.mjs
+!docs/
+!docs/商品上架规范.md

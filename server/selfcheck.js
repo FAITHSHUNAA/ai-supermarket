@@ -56,6 +56,13 @@ async function main() {
     const api = jar();
     const health = await api("/v1/health");
     assert(health.status === 200 && health.json.ok, "health");
+    const spec = await api("/openapi.json");
+    const keys = spec.json.paths["/v1/developer/api-keys"];
+    assert(keys.get && keys.post, "OpenAPI documents both key operations");
+    for (const name of ["api-key-invoke.mjs", "oauth-pkce.mjs"]) {
+      const example = await api(`/examples/${name}`);
+      assert(example.status === 200 && example.text === fs.readFileSync(path.join(__dirname, "../examples", name), "utf8"), "download " + name);
+    }
 
     const models = await api("/v1/platform/models");
     assert(models.json.items.length >= 7, "models");

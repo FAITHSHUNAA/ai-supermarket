@@ -1,8 +1,14 @@
 const domain = require("../domain");
+const path = require("node:path");
 const { asyncRoute } = require("../http");
 const { page } = require("../lib");
 
 function mount(app, ctx) {
+  for (const name of ["api-key-invoke.mjs", "oauth-pkce.mjs"]) {
+    app.get(`/examples/${name}`, (req, res) => {
+      res.download(path.join(__dirname, "../../examples", name));
+    });
+  }
   app.get("/v1/platform/system-settings", (req, res) => {
     const settings = ctx.get().settings;
     res.json({
@@ -256,7 +262,15 @@ function openapiPaths() {
     ["get", "/v1/market/endpoints"],
     ["get", "/v1/data/{supplierSlug}/{upstreamPath}"],
   ];
-  return Object.fromEntries(list.map(([method, path]) => [path, { [method]: { responses: { 200: { description: "OK" } } } }]));
+  const paths = {};
+  for (const [method, route] of list) {
+    const item = paths[route] ||= {};
+    const parameters = Array.from(route.matchAll(/\{(\w+)\}/g), ([, name]) => ({
+      name, in: "path", required: true, schema: { type: "string" },
+    }));
+    item[method] = { parameters, responses: { "2XX": { description: "成功" } } };
+  }
+  return paths;
 }
 
 module.exports = { mount };

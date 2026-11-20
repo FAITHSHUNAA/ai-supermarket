@@ -18,6 +18,8 @@ export function Docs() {
         <a href="/llms.txt">llms.txt</a>
         <a href="/openapi.json">OpenAPI</a>
         <a href="/developer-integration-guide.md">接入指南</a>
+        <a href="/examples/api-key-invoke.mjs" download>下载模型调用示例</a>
+        <a href="/examples/oauth-pkce.mjs" download>下载 OAuth 接入示例</a>
       </aside>
       <article className="card">
         <DocBody kind={kind} />

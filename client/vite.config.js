@@ -7,6 +7,7 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
+      "/examples/": "http://127.0.0.1:8787",
       "/v1": "http://127.0.0.1:8787",
       "/llms.txt": "http://127.0.0.1:8787",
       "/openapi.json": "http://127.0.0.1:8787",

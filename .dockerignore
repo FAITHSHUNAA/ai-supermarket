@@ -1,0 +1,14 @@
+**
+!package.json
+!package-lock.json
+!server/
+!server/**
+!client/
+!client/src/
+!client/src/**
+!client/public/
+!client/public/**
+!client/index.html
+!client/vite.config.js
+!examples/
+!examples/*.mjs

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { DetailLink } from "../shell/detail";
 import { api } from "../api";
 import { Notice } from "../shell/ui";
 
@@ -20,14 +21,15 @@ export function Home() {
         </div>
       </div>
       <aside className="panel">
+        <div className="glass-sculpture" aria-hidden="true"><i/><i/><i/></div>
         <h2>在架商品{catalog && " · " + catalog.pagination.total}</h2>
         <Notice error={error} />
         {!catalog && !error && <p>正在读取商品…</p>}
         {catalog?.items.map(app => <article key={app.client_id}>
-          <h3><Link to={`/store/${app.client_id}`}>{app.name}</Link></h3>
+          <h3><DetailLink to={`/store/${app.client_id}`}>{app.name}</DetailLink></h3>
           <p>{app.summary}</p>
         </article>)}
-        {catalog?.items.length === 0 && <><p>首批商品征集中。卖家可以先查看填写模板，准备商品说明和交付地址。</p><Link to="/docs/listing">查看商品上架规范 →</Link></>}
+        {catalog?.items.length === 0 && <><p>首批商品征集中。卖家可以先查看填写模板，准备商品说明和交付地址。</p><DetailLink className="guide-entry" to="/docs/listing">查看商品上架规范 <span aria-hidden="true">↗</span></DetailLink></>}
       </aside>
     </section>
   );

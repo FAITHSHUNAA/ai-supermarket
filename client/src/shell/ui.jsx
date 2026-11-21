@@ -16,7 +16,7 @@ export function Markdown({ text }) {
 
 export function Notice({ error, children }) {
   if (!error && !children) return null;
-  return <p className={error ? "notice bad" : "notice"}>{error ? error.message || String(error) : children}</p>;
+  return <p role={error ? "alert" : "status"} className={error ? "notice bad" : "notice"}>{error ? error.message || String(error) : children}</p>;
 }
 
 export function Field({ label, children }) {

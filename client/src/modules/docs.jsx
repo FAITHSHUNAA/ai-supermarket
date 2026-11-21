@@ -4,9 +4,10 @@ import { api } from "../api";
 import { Markdown, Notice } from "../shell/ui";
 import listingGuide from "../../../docs/商品上架规范.md?raw";
 
-export function Docs() {
+export function Docs({compact=false}) {
   const params = useParams();
   const kind = params["*"] || "";
+  if (compact) return <div className="detail-guide"><DocBody kind={kind}/></div>;
   return (
     <section className="layout">
       <aside className="side">

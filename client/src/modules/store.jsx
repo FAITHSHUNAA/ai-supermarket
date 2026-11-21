@@ -1,5 +1,7 @@
 import { ListingDetails } from "./listing";
-import { useEffect, useState } from "react";
+import { DetailLink } from "../shell/detail";
+import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { useSession } from "../shell/session";
@@ -8,6 +10,8 @@ import { Empty, Notice, PageTitle } from "../shell/ui";
 export function Store() {
   const [params, setParams] = useSearchParams();
   const [data, setData] = useState(null);
+  const grid = useRef(null);
+  const [loading,setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
   const [error, setError] = useState(null);
   const keyword = params.get("keyword") || "";
@@ -28,14 +32,22 @@ export function Store() {
 
   useEffect(() => {
     let active = true;
-    setData(null);
+    setLoading(true);
     setError(null);
     const query = new URLSearchParams({ page_size: "24", page: String(page) });
     if (keyword) query.set("keyword", keyword);
     if (category) query.set("category", category);
     api(`/v1/platform/apps?${query}`)
-      .then(body => { if (active) setData(body); })
-      .catch(err => { if (active) setError(err); });
+      .then(body => {
+        if (!active) return;
+        const update = () => {
+          if (active) {setData(body); setLoading(false);}
+        };
+        if (grid.current?.childElementCount && document.startViewTransition && !document.querySelector("dialog[open]") && !matchMedia("(prefers-reduced-motion:reduce)").matches) {
+          document.startViewTransition(() => flushSync(update));
+        } else update();
+      })
+      .catch(err => { if (active) {setLoading(false);setData(null);setError(err);} });
     return () => { active = false; };
   }, [keyword, category, page]);
 
@@ -71,11 +83,11 @@ export function Store() {
         {(keyword || category || page > 1) && <Link to="/store">清除筛选</Link>}
       </form>
       <Notice error={error} />
-      {!data && !error ? <p className="muted">正在读取已上架应用…</p> : null}
+      {!data && loading ? <p className="muted" role="status">正在读取已上架应用…</p> : null}
       {data && data.items.length === 0 ? <Empty>{keyword || category || page > 1 ? "没有找到商品，可以调整筛选条件。" : <>目前还没有在售商品。<Link to="/docs/listing">查看上架规范</Link></>}</Empty> : null}
-      <div className="grid-3">
+      <div className="grid-3" ref={grid} aria-busy={loading}>
         {(data?.items || []).map((app) => (
-          <Link className="app-card" key={app.client_id} to={`/store/${app.client_id}`}>
+          <DetailLink className="app-card" style={{viewTransitionName:"product-"+CSS.escape(app.client_id)}} key={app.client_id} to={`/store/${app.client_id}`}>
             <div className="faint">{app.category?.name || "未分类"}</div>
             <h3>{app.name}</h3>
             <p className="muted">{app.summary}</p>
@@ -85,7 +97,7 @@ export function Store() {
               ))}
             </div>
             <strong>{app.commercial_offer ? (app.commercial_offer.price_points ? `${app.commercial_offer.price_points} 积分` : "免费开通") : "暂无报价"}</strong>
-          </Link>
+          </DetailLink>
         ))}
       </div>
       {data && (page > 1 || data.pagination.total_pages > 1) && <nav className="row" aria-label="商品分页">

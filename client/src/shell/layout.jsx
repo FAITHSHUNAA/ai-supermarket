@@ -1,19 +1,14 @@
-import { useState } from "react";
+import { Dock } from "./dock";
+import { useSurfaceMotion } from "./motion";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useSession } from "./session";
 
-const links = [
-  ["/", "首页"],
-  ["/store", "AI 超市"],
-  ["/membership", "会员中心"],
-  ["/recharge", "充值中心"],
-];
 
 export function Layout() {
   const { user, settings, catalogOnly } = useSession();
   const { pathname } = useLocation();
   const publicPage = /^\/(?:$|store(?:\/|$)|docs(?:\/|$)|legal\/|about$|design$|membership$|recharge$)/.test(pathname);
-  const [open, setOpen] = useState(false);
+  useSurfaceMotion(pathname);
   const brand = settings?.brand_name || "AI 超市";
   return (
     <div className="shell">
@@ -21,20 +16,14 @@ export function Layout() {
         跳到主要内容
       </a>
       <header className="nav">
-        <Link className="brand" to="/" onClick={() => setOpen(false)}>
+        <Link className="brand" to="/">
           <img src="/favicon.svg" alt="" />
           <span>
             <strong>{brand}</strong>
             <small>AI MARKET</small>
           </span>
         </Link>
-        <nav className={open ? "links open" : "links"} aria-label="平台导航">
-          {links.map(([to, label]) => (
-            <NavLink key={to} to={to} end={to === "/"} onClick={() => setOpen(false)}>
-              {label}
-            </NavLink>
-          ))}
-        </nav>
+        <Dock />
         <div className="nav-side">
           <NavLink to="/register-developer">开发者中心</NavLink>
           {user ? (
@@ -46,14 +35,12 @@ export function Layout() {
               登录
             </NavLink>
           )}
-          <button className="menu-btn" type="button" onClick={() => setOpen((value) => !value)}>
-            菜单
-          </button>
+
         </div>
       </header>
       <main id="app-content" className="page">
         {catalogOnly && <p className="notice">当前开放商品目录与文档。账号、上架申请和交易尚未开放。 <Link to="/docs/listing">查看上架规范</Link></p>}
-        {catalogOnly && !publicPage ? <Link className="btn" to="/store">浏览商品目录</Link> : <Outlet />}
+        {catalogOnly && !publicPage ? <Link className="btn" to="/store">浏览商品目录</Link> : <div className="route-view" key={pathname}><Outlet /></div>}
       </main>
       <footer className="footer">
         <div>

@@ -5,10 +5,15 @@ After=network.target
 [Service]
 DynamicUser=yes
 StateDirectory=ai-supermarket-live
+RuntimeDirectory=ai-supermarket
+RuntimeDirectoryMode=0700
+Environment=REVIEW_SOCKET=/run/ai-supermarket/review.sock
 WorkingDirectory=/opt/ai-supermarket/current
 Environment=NODE_ENV=production
 Environment=DATA_DIR=/var/lib/ai-supermarket-live
 Environment=MARKET_MODE=live
+Environment=PUBLIC_ORIGIN=http://8.162.15.119
+EnvironmentFile=-/etc/ai-supermarket/merchant.env
 Environment=BIND_ADDRESS=127.0.0.1
 Environment=PORT=8787
 ExecStart=/opt/ai-supermarket/runtime/node server/index.js

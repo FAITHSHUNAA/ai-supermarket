@@ -432,4 +432,4 @@ function importUsers(db, admin, body) {
   return { created };
 }
 
-module.exports = { mount };
+module.exports = { mount, reviewOffer };

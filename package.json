@@ -15,8 +15,10 @@
     "test": "node server/selfcheck.js"
   },
   "dependencies": {
+    "alipay-sdk": "^4.14.0",
     "cookie-parser": "^1.4.7",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",

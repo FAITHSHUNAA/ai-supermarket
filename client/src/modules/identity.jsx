@@ -7,7 +7,8 @@ import { Field, Notice } from "../shell/ui";
 export function Login() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const { refresh } = useSession();
+  const { refresh, settings } = useSession();
+  const usernameMode = settings?.login?.primary_login_method === "username_password";
   const [mode, setMode] = useState(params.get("mode") === "register" ? "register" : "password");
   const [form, setForm] = useState({ phone: "", password: "", otp: "", name: "", invite_code: params.get("invite") || "", email: "" });
   const [captcha, setCaptcha] = useState(null);
@@ -23,8 +24,8 @@ export function Login() {
     setCaptcha(await api("/v1/auth/captcha/challenge"));
   }
   useEffect(() => {
-    if (mode === "register") loadCaptcha().catch(setError);
-  }, [mode]);
+    if (mode === "register" || usernameMode) loadCaptcha().catch(setError);
+  }, [mode, usernameMode]);
 
   async function send(purpose) {
     setError(null);
@@ -42,10 +43,10 @@ export function Login() {
     setError(null);
     try {
       if (mode === "register") {
-        const answer = captcha.prompt.split("+").reduce((sum, part) => sum + Number(part), 0);
+        const answer = form.answer;
         await api("/v1/auth/register", {
           method: "POST",
-          body: { ...form, captcha_id: captcha.captcha_id, captcha_answer: String(answer), privacy_accepted: true, otp: form.otp },
+          body: { ...form, username: form.phone, captcha_id: captcha?.captcha_id, captcha_answer: String(answer), privacy_accepted: true, otp: form.otp },
         });
       } else if (mode === "otp") {
         await api("/v1/auth/login/otp", { method: "POST", body: { phone: form.phone, otp: form.otp } });
@@ -55,7 +56,7 @@ export function Login() {
         setDemo("密码已重置，请登录");
         return;
       } else {
-        await api("/v1/auth/login", { method: "POST", body: { phone: form.phone.includes("@") ? undefined : form.phone, email: form.phone.includes("@") ? form.phone : undefined, account: form.phone, password: form.password } });
+        await api("/v1/auth/login", { method: "POST", body: { account: form.phone, password: form.password, captcha_id: captcha?.captcha_id, captcha_answer: form.answer } });
       }
       await refresh();
       navigate(returnTo);
@@ -69,8 +70,7 @@ export function Login() {
       <div>
         <div className="kicker">一个账号走完全站</div>
         <h2>登录 AI 超市</h2>
-        <p className="lede">演示环境没有真实短信。验证码会直接出现在这张卡片上。连续输错密码后，需要再答一次算术题。</p>
-        <p className="muted">试用账号：13800000002 / User#123456</p>
+        {usernameMode ? <p>用户名为 3 至 32 位字母、数字或下划线，以字母开头。设置 12 至 128 位本站专用密码。</p> : settings && <p>此环境支持手机号登录。</p>}
       </div>
       <form className="card" onSubmit={submit}>
         <div className="tabs">
@@ -79,11 +79,11 @@ export function Login() {
             ["otp", "验证码登录"],
             ["register", "注册"],
             ["reset", "重置密码"],
-          ].map(([key, label]) => (
+          ].filter(([key]) => !usernameMode || ["password","register"].includes(key)).map(([key, label]) => (
             <button type="button" key={key} className={mode === key ? "on" : ""} onClick={() => setMode(key)}>{label}</button>
           ))}
         </div>
-        <Field label="手机号或邮箱">
+        <Field label={usernameMode ? "用户名" : "手机号或邮箱"}>
           <input value={form.phone} onChange={(event) => set("phone", event.target.value)} required />
         </Field>
         {mode === "register" ? (
@@ -96,7 +96,7 @@ export function Login() {
             <input type="password" value={form.password} onChange={(event) => set("password", event.target.value)} required={mode !== "otp"} />
           </Field>
         ) : null}
-        {mode !== "password" ? (
+        {!usernameMode && mode !== "password" ? (
           <Field label="短信验证码">
             <div className="row">
               <input value={form.otp} onChange={(event) => set("otp", event.target.value)} />
@@ -109,9 +109,10 @@ export function Login() {
             <Field label="邀请码，可不填">
               <input value={form.invite_code} onChange={(event) => set("invite_code", event.target.value)} />
             </Field>
-            <p className="muted">验证码题目：{captcha ? captcha.prompt : "…"} 。提交即表示同意 <Link to="/legal/terms-of-service">用户协议</Link> 和 <Link to="/legal/privacy-policy">隐私政策</Link>。</p>
+            <label><input type="checkbox" required />同意 <Link to="/legal/terms-of-service">用户协议</Link> 和 <Link to="/legal/privacy-policy">隐私政策</Link></label>
           </>
         ) : null}
+        {(mode === "register" || usernameMode) && captcha && <Field label={captcha.prompt + " = ?"}><input required inputMode="numeric" value={form.answer || ""} onChange={e => set("answer",e.target.value)} /></Field>}
         <Notice error={error}>{demo}</Notice>
         <button className="btn" type="submit">{mode === "register" ? "注册并进入" : mode === "reset" ? "重置密码" : "登录"}</button>
       </form>

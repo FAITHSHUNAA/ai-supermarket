@@ -21,7 +21,7 @@ function mount(app, ctx) {
       filing_text: settings.filingText,
       membership_sales_enabled: settings.membershipSalesEnabled,
       login: {
-        primary_login_method: settings.primaryLoginMethod,
+        primary_login_method: ctx.get().production ? "username_password" : settings.primaryLoginMethod,
         backup_login_method: settings.backupLoginMethod,
         enabled_methods: settings.enabledLoginMethods,
         otp_available: !ctx.get().production,
@@ -60,7 +60,7 @@ function mount(app, ctx) {
   });
 
   app.get("/v1/platform/payment-channels", (req, res) => {
-    if (ctx.get().production) return res.json({mock_enabled:false, items:[]});
+    if (ctx.get().production) return res.json({mock_enabled:false, items:["alipay","wechat"].filter(require("../merchant").enabled).map(channel => ({channel,name:channel === "alipay" ? "支付宝" : "微信支付"}))});
     res.json({
       mock_enabled: true,
       items: [

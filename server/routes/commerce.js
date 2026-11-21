@@ -3,6 +3,28 @@ const { asyncRoute } = require("../http");
 const { HttpError } = require("../lib");
 
 function mount(app, ctx) {
+  const merchant = require("../merchant");
+  app.post("/v1/payments/orders/:id/checkout", asyncRoute(async (req,res) => {
+    const db = ctx.get(), user = domain.requireUser(domain.resolveActor(db,req));
+    const order = db.orders.find(row => row.outTradeNo === req.params.id && row.userId === user.id);
+    if (!db.production || !order || order.status !== "pending") return res.sendStatus(409);
+    const qr = await require("qrcode").toDataURL(await merchant.checkout(order));
+    res.json({qr});
+  }));
+  app.post("/v1/payments/notify/:channel", asyncRoute(async (req,res) => {
+    if (!ctx.get().production) return res.sendStatus(404);
+    const channel = req.params.channel;
+    const tx = merchant.notification(channel,req);
+    await ctx.mutate(db => {
+      const order = db.orders.find(row => row.outTradeNo === tx.order);
+      merchant.requireValid(order && order.channel === channel && Number.isSafeInteger(tx.cents) && tx.cents > 0 && order.amountCents === tx.cents && typeof tx.transaction === "string" && tx.transaction.length > 0);
+      merchant.requireValid(!db.orders.some(other => other !== order && other.channel === channel && other.providerTransaction === tx.transaction));
+      merchant.requireValid(order.status !== "paid" || order.providerTransaction === tx.transaction);
+      domain.confirmOrder(db,null,tx.order);
+      order.providerTransaction = tx.transaction;
+    });
+    if (channel === "alipay") res.type("text").send("success"); else res.sendStatus(204);
+  }));
   app.get(
     "/v1/user/wallet",
     asyncRoute(async (req, res) => {

@@ -149,7 +149,7 @@ export function AppDetail() {
           {user && !app.owned && price !== null ? (
             <div className="row">
               <button className="btn" type="button" onClick={() => buy("points")}>用积分开通</button>
-              {price > 0 ? <button className="btn ghost" type="button" onClick={() => buy("wechat")}>收银台支付</button> : null}
+              {price > 0 && ["alipay","wechat"].map(channel => <button key={channel} className="btn ghost" type="button" onClick={() => buy(channel)}>{channel === "alipay" ? "支付宝" : "微信支付"}</button>)}
             </div>
           ) : null}
           {user ? (

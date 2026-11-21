@@ -119,6 +119,9 @@ function FieldCoupon({ coupon, setCoupon }) {
 }
 
 export function Pay() {
+  const {settings} = useSession();
+  const live = settings?.login?.primary_login_method === "username_password";
+  const [qr,setQr] = useState("");
   const { outTradeNo } = useParams();
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
@@ -137,19 +140,24 @@ export function Pay() {
       setError(err);
     }
   }
+  useEffect(() => {
+    if (!qr || order?.status !== "pending") return;
+    const timer = setInterval(() => api(`/v1/payments/orders/${outTradeNo}`).then(setOrder).catch(setError), 3000);
+    return () => clearInterval(timer);
+  },[qr,order?.status,outTradeNo]);
 
   if (!order) return <section className="section"><Notice error={error} />{error ? null : <p>正在读取订单…</p>}</section>;
   return (
     <section className="section" style={{ paddingTop: 48 }}>
       <article className="card" style={{ maxWidth: 560 }}>
-        <div className="faint">演示收银台</div>
+        <div className="faint">{live ? "商户收银台" : "演示收银台"}</div>
         <h2>{order.title}</h2>
         <p className="price">{yuan(order.amount_cents)}</p>
         <p className="muted">到账 {order.points} 积分 · 状态 {order.status}</p>
-        <p className="muted">这里不会唤起真实的微信或支付宝。确认后只在本站记账，用来走通充值、会员和应用购买。</p>
+        <p className="muted">{live ? "请在支付应用中核对商户和金额。支付平台确认到账后，订单状态会自动更新。" : "本地演示订单。"}</p>
         <Notice error={error} />
         {order.status === "pending" ? (
-          <>
+          live ? <><button className="btn" onClick={() => api(`/v1/payments/orders/${outTradeNo}/checkout`,{method:"POST"}).then(r=>setQr(r.qr)).catch(setError)}>获取付款码</button>{qr && <img alt="商户付款二维码" src={qr}/>}</> : <>
             <div className="tabs">
               <button type="button" className={channel === "wechat" ? "on" : ""} onClick={() => setChannel("wechat")}>微信支付</button>
               <button type="button" className={channel === "alipay" ? "on" : ""} onClick={() => setChannel("alipay")}>支付宝</button>

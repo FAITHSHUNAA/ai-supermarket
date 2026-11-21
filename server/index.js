@@ -12,10 +12,13 @@ const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
 app.use(cookieParser());
-app.use(express.json({ limit: "4mb" }));
+app.use(express.json({ limit: "4mb", verify(req,res,buf) {
+  if (req.path === "/v1/payments/notify/wechat") req.rawPaymentBody = buf.toString("utf8");
+} }));
 app.use(express.urlencoded({ extended: false }));
 app.use((req, res, next) => {
   const origin = req.get("origin");
+  if (live && origin && origin !== process.env.PUBLIC_ORIGIN) return res.sendStatus(403);
   if (origin) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Access-Control-Allow-Credentials", "true");
@@ -87,6 +90,7 @@ if (fs.existsSync(dist)) {
 }
 
 if (require.main === module) {
+  if (live && process.env.REVIEW_SOCKET) require("./review").listen(store,process.env.REVIEW_SOCKET);
   const port = Number(process.env.PORT || 8787);
   app.listen(port, process.env.BIND_ADDRESS || "0.0.0.0", () => {
     console.log(`AI 超市正在监听 http://127.0.0.1:${port}`);

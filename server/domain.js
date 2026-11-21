@@ -73,6 +73,8 @@ function findUser(db, idValue) {
 
 function findUserByLogin(db, login) {
   const value = String(login || "").trim().toLowerCase();
+  if (!value) return null;
+  if (db.production) return db.users.find(item => item.username === value) || null;
   return (
     db.users.find((item) => item.phone === login || (item.email && item.email.toLowerCase() === value)) || null
   );
@@ -193,16 +195,22 @@ function assertOtp(db, phone, purpose, code) {
 
 function register(db, body) {
   assertCaptcha(db, body.captcha_id, body.captcha_answer);
-  assertOtp(db, body.phone, "register", body.otp);
+  let username;
+  if (db.production) {
+    username = String(body.username || "").trim().toLowerCase();
+    if (!/^[a-z][a-z0-9_]{2,31}$/.test(username)) throw new HttpError(400, "invalid_username", "用户名须为 3 至 32 位字母、数字或下划线，以字母开头");
+    if (typeof body.password !== "string" || body.password.length < 12 || body.password.length > 128) throw new HttpError(400, "invalid_password", "密码须为 12 至 128 个字符");
+  } else assertOtp(db, body.phone, "register", body.otp);
   if (!body.privacy_accepted) throw new HttpError(400, "privacy_required", "请先同意用户协议和隐私政策");
   if (!body.password || String(body.password).length < 8) throw new HttpError(400, "weak_password", "密码至少 8 位");
-  if (findUserByLogin(db, body.phone)) throw new HttpError(409, "phone_taken", "这个手机号已经注册");
+  if (findUserByLogin(db, username || body.phone)) throw new HttpError(409, "account_taken", "该账号已经注册");
   const invite = body.invite_code ? db.users.find((item) => item.inviteCode === String(body.invite_code).trim()) : null;
   const user = {
     id: id("usr"),
-    phone: body.phone,
-    email: body.email || "",
-    name: body.name || `用户${String(body.phone).slice(-4)}`,
+    username,
+    phone: db.production ? "" : body.phone,
+    email: db.production ? "" : body.email || "",
+    name: username || body.name || `用户${String(body.phone).slice(-4)}`,
     passwordHash: hashPassword(body.password),
     roles: ["user"],
     planId: "plan_free",
@@ -534,7 +542,7 @@ function applySplit(db, payer, client, points) {
 }
 
 function createOrder(db, user, fields) {
-  if (db.production) throw new HttpError(503, "merchant_unavailable", "商户收款尚未开通");
+  if (db.production) require("./merchant").requireChannel(fields.channel);
   const order = {
     id: id("ord"),
     outTradeNo: randomToken("pay", 8),

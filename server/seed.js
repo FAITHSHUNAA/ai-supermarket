@@ -492,4 +492,20 @@ function privacyText() {
   ].join("\n");
 }
 
-module.exports = { seed, passwordFor };
+function productionSeed() {
+  const db = seed();
+  const keep = new Set(["categories", "plans", "permissionGroups", "exchangeRates", "splitRules"]);
+  for (const [key, value] of Object.entries(db)) {
+    if (Array.isArray(value) && !keep.has(key)) db[key] = [];
+  }
+  db.plans = db.plans.filter(plan => plan.priceCents === 0);
+  db.production = true;
+  db.secrets = {};
+  Object.assign(db.settings, {
+    demoExposeOtp: false, membershipSalesEnabled: false, hostingAdmissionEnabled: false,
+    primaryLoginMethod: "phone_password", enabledLoginMethods: ["phone_password"],
+  });
+  return db;
+}
+
+module.exports = { seed, productionSeed, passwordFor };

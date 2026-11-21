@@ -24,7 +24,7 @@ function mount(app, ctx) {
         primary_login_method: settings.primaryLoginMethod,
         backup_login_method: settings.backupLoginMethod,
         enabled_methods: settings.enabledLoginMethods,
-        otp_available: true,
+        otp_available: !ctx.get().production,
         demo_otp: settings.demoExposeOtp,
       },
     });
@@ -60,6 +60,7 @@ function mount(app, ctx) {
   });
 
   app.get("/v1/platform/payment-channels", (req, res) => {
+    if (ctx.get().production) return res.json({mock_enabled:false, items:[]});
     res.json({
       mock_enabled: true,
       items: [

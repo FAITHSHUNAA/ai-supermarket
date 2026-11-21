@@ -4,10 +4,11 @@ After=network.target
 
 [Service]
 DynamicUser=yes
-StateDirectory=ai-supermarket
+StateDirectory=ai-supermarket-live
 WorkingDirectory=/opt/ai-supermarket/current
 Environment=NODE_ENV=production
-Environment=DATA_DIR=/var/lib/ai-supermarket
+Environment=DATA_DIR=/var/lib/ai-supermarket-live
+Environment=MARKET_MODE=live
 Environment=BIND_ADDRESS=127.0.0.1
 Environment=PORT=8787
 ExecStart=/opt/ai-supermarket/runtime/node server/index.js

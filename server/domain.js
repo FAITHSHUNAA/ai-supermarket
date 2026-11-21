@@ -177,6 +177,7 @@ function assertCaptcha(db, captchaId, answer) {
 }
 
 function sendOtp(db, phone, purpose) {
+  if (db.production) throw new HttpError(503, "sms_unavailable", "短信服务尚未接通");
   if (!/^1\d{10}$/.test(String(phone || ""))) throw new HttpError(400, "invalid_phone", "请输入 11 位手机号");
   const code = String(Math.floor(100000 + Math.random() * 900000));
   db.otps = db.otps.filter((item) => item.expiresAt > Date.now() && !(item.phone === phone && item.purpose === purpose));
@@ -533,6 +534,7 @@ function applySplit(db, payer, client, points) {
 }
 
 function createOrder(db, user, fields) {
+  if (db.production) throw new HttpError(503, "merchant_unavailable", "商户收款尚未开通");
   const order = {
     id: id("ord"),
     outTradeNo: randomToken("pay", 8),

@@ -179,6 +179,7 @@ function mount(app, ctx) {
   app.post(
     "/v1/payments/orders/:outTradeNo/confirm",
     asyncRoute(async (req, res) => {
+      if (ctx.get().production) return res.status(410).json({error:"mock_payment_disabled", message:"生产订单仅接受支付机构确认"});
       const order = await ctx.mutate((db) => {
         const user = domain.requireUser(domain.resolveActor(db, req));
         return domain.confirmOrder(db, user, req.params.outTradeNo);

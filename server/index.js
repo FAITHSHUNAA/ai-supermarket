@@ -3,9 +3,11 @@ const cookieParser = require("cookie-parser");
 const fs = require("fs");
 const path = require("path");
 const { createStore, HttpError, pushCapped, id, nowIso } = require("./lib");
-const { seed } = require("./seed");
+const { seed, productionSeed } = require("./seed");
 
-const store = createStore(seed);
+const live = process.env.MARKET_MODE === "live";
+const store = createStore(live ? productionSeed : seed);
+if (Boolean(store.get().production) !== live) throw new Error("运行模式与数据库不匹配，请检查 DATA_DIR");
 const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1);

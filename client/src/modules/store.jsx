@@ -12,43 +12,53 @@ export function Store() {
   const [error, setError] = useState(null);
   const keyword = params.get("keyword") || "";
   const category = params.get("category") || "";
+  const page = Math.max(1, parseInt(params.get("page"), 10) || 1);
+  const [search, setSearch] = useState(keyword);
+  useEffect(() => setSearch(keyword), [keyword]);
+  function filter(key, value) {
+    const next = new URLSearchParams(params);
+    next.delete("page");
+    if (value) next.set(key, value); else next.delete(key);
+    setParams(next);
+  }
 
   useEffect(() => {
     api("/v1/platform/application-categories").then((body) => setCategories(body.items)).catch(() => {});
   }, []);
 
   useEffect(() => {
-    const query = new URLSearchParams({ page_size: "40" });
+    let active = true;
+    setData(null);
+    setError(null);
+    const query = new URLSearchParams({ page_size: "24", page: String(page) });
     if (keyword) query.set("keyword", keyword);
     if (category) query.set("category", category);
     api(`/v1/platform/apps?${query}`)
-      .then(setData)
-      .catch(setError);
-  }, [keyword, category]);
+      .then(body => { if (active) setData(body); })
+      .catch(err => { if (active) setError(err); });
+    return () => { active = false; };
+  }, [keyword, category, page]);
 
   return (
     <section className="section" style={{ paddingTop: 36 }}>
       <PageTitle kicker="AI ECOSYSTEM" title="AI 超市">
         发现已上架的应用，用一个账号开通更多工具。
       </PageTitle>
-      <div className="toolbar">
+      <form className="toolbar" role="search" onSubmit={event => {event.preventDefault(); filter("keyword", search.trim());}}>
         <input
           style={{ maxWidth: 280 }}
           placeholder="搜索应用"
-          defaultValue={keyword}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              params.set("keyword", event.target.value);
-              setParams(params);
-            }
-          }}
+          aria-label="搜索应用"
+          value={search}
+          onChange={event => setSearch(event.target.value)}
         />
+        <button className="btn" type="submit">搜索</button>
         <select
+          aria-label="商品分类"
           style={{ maxWidth: 220 }}
           value={category}
           onChange={(event) => {
-            params.set("category", event.target.value);
-            setParams(params);
+            filter("category", event.target.value);
           }}
         >
           <option value="">全部分类</option>
@@ -58,10 +68,11 @@ export function Store() {
             </option>
           ))}
         </select>
-      </div>
+        {(keyword || category || page > 1) && <Link to="/store">清除筛选</Link>}
+      </form>
       <Notice error={error} />
-      {!data ? <p className="muted">正在读取已上架应用…</p> : null}
-      {data && data.items.length === 0 ? <Empty>这个条件下还没有应用。</Empty> : null}
+      {!data && !error ? <p className="muted">正在读取已上架应用…</p> : null}
+      {data && data.items.length === 0 ? <Empty>{keyword || category || page > 1 ? "没有找到商品，可以调整筛选条件。" : <>目前还没有在售商品。<Link to="/docs/listing">查看上架规范</Link></>}</Empty> : null}
       <div className="grid-3">
         {(data?.items || []).map((app) => (
           <Link className="app-card" key={app.client_id} to={`/store/${app.client_id}`}>
@@ -77,6 +88,11 @@ export function Store() {
           </Link>
         ))}
       </div>
+      {data && (page > 1 || data.pagination.total_pages > 1) && <nav className="row" aria-label="商品分页">
+        <button disabled={page <= 1} onClick={() => filter("page",String(page - 1))}>上一页</button>
+        <span>第 {page} 页，共 {data.pagination.total_pages} 页</span>
+        <button disabled={page >= data.pagination.total_pages} onClick={() => filter("page",String(page + 1))}>下一页</button>
+      </nav>}
     </section>
   );
 }
@@ -89,6 +105,10 @@ export function AppDetail() {
   const [message, setMessage] = useState("");
   const [prompt, setPrompt] = useState("帮我起三个标题");
   const [output, setOutput] = useState("");
+  const [channels, setChannels] = useState([]);
+  useEffect(() => {
+    api("/v1/platform/payment-channels").then(result => setChannels(result.items || [])).catch(setError);
+  }, []);
 
   function load() {
     return api(`/v1/platform/apps/${id}`).then(setApp).catch(setError);
@@ -149,7 +169,7 @@ export function AppDetail() {
           {user && !app.owned && price !== null ? (
             <div className="row">
               <button className="btn" type="button" onClick={() => buy("points")}>用积分开通</button>
-              {price > 0 && ["alipay","wechat"].map(channel => <button key={channel} className="btn ghost" type="button" onClick={() => buy(channel)}>{channel === "alipay" ? "支付宝" : "微信支付"}</button>)}
+              {price > 0 && channels.filter(item => ["wechat","alipay"].includes(item.channel)).map(item => <button key={item.channel} className="btn ghost" type="button" onClick={() => buy(item.channel)}>{item.name}</button>)}
             </div>
           ) : null}
           {user ? (

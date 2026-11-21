@@ -5,7 +5,7 @@ const { HttpError, page } = require("../lib");
 function mount(app, ctx) {
   app.get("/v1/developer/application", (req, res) => {
     const user = domain.requireUser(domain.resolveActor(ctx.get(), req));
-    res.json({ status: user.developerStatus, pitch: user.developerPitch || "" });
+    res.json({ status: user.developerStatus, pitch: user.developerPitch || "", reason: user.developerReviewReason || "" });
   });
 
   app.post(

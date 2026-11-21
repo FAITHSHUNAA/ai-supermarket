@@ -962,10 +962,12 @@ function ownedClient(db, user, clientId) {
 }
 
 function applyDeveloper(db, user, pitch) {
+  if (typeof pitch !== "string" || !pitch.trim() || pitch.trim().length > 2000) throw new HttpError(400, "invalid_pitch", "请填写 1 至 2000 字的商品说明");
   if (user.developerStatus === "approved") throw new HttpError(409, "already_developer", "你已经是开发者");
   if (user.developerStatus === "pending") throw new HttpError(409, "application_pending", "申请正在审核");
   user.developerStatus = "pending";
-  user.developerPitch = pitch || "";
+  user.developerPitch = pitch.trim();
+  user.developerReviewReason = "";
   if (!user.roles.includes("developer")) {
     /* role is granted on approval */
   }
@@ -975,6 +977,8 @@ function applyDeveloper(db, user, pitch) {
 
 function reviewDeveloper(db, admin, userId, approve, reason) {
   const user = must(findUser(db, userId), 404, "user_not_found", "用户不存在");
+  if (user.developerStatus !== "pending") throw new HttpError(409, "review_closed", "这份申请已处理");
+  user.developerReviewReason = approve ? "" : String(reason || "").trim().slice(0, 500);
   if (approve) {
     user.developerStatus = "approved";
     if (!user.roles.includes("developer")) user.roles.push("developer");

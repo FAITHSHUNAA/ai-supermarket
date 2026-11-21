@@ -19,31 +19,48 @@ const tabs = [
 ];
 
 export function DeveloperApply() {
-  const { user, refresh } = useSession();
-  const [pitch, setPitch] = useState("我想把自己的工具上架到超市。");
+  const { user, refresh, settings } = useSession();
+  const live = settings?.login?.primary_login_method === "username_password";
+  const [pitch, setPitch] = useState("");
+  const [reason, setReason] = useState("");
+  const [sending, setSending] = useState(false);
   const [promo, setPromo] = useState("希望分享给同事。");
   const [error, setError] = useState(null);
   const [done, setDone] = useState("");
+  useEffect(() => {
+    let active = true;
+    if (user?.id) api("/v1/developer/application").then(data => {
+      if (active) { setPitch(data.pitch); setReason(data.reason || ""); }
+    }).catch(err => { if (active) setError(err); });
+    return () => { active = false; };
+  }, [user?.id,user?.developerStatus]);
+  if (user === undefined) return <p className="section">正在读取入驻状态…</p>;
   if (user === null) return <p className="section">请先 <Link to="/login?return_to=/register-developer">登录</Link> 再申请。</p>;
   return (
     <section className="section" style={{ paddingTop: 36 }}>
       <div className="faint">DEVELOPER</div>
       <h2>入驻成为开发者</h2>
-      <p className="lede">审核通过后才能创建钥匙、应用和托管。推广员需要另外申请，通过后才能参与分成。</p>
+      <p className="lede">说明你准备销售的商品、适用人群和交付方式。通过审核后即可创建商品并提交上架。 <Link to="/docs/listing">查看上架规范</Link></p>
       <Notice error={error}>{done}</Notice>
       <div className="split">
         <article className="card">
           <h3>开发者申请</h3>
-          <p className="muted">当前状态：{user?.developerStatus || "none"}</p>
-          <Field label="你要上架什么"><textarea value={pitch} onChange={(event) => setPitch(event.target.value)} /></Field>
-          <button className="btn" type="button" onClick={() => submit("/v1/developer/application", { pitch }, setError, setDone, refresh)}>提交入驻</button>
+          <p>当前状态：{({none:"尚未申请",pending:"等待审核",approved:"已获准入驻",rejected:"已退回"})[user.developerStatus]}</p>
+          {user.developerStatus === "approved" ? <Link className="btn" to="/developer/clients">管理我的商品</Link> : <>
+            {reason && <p>退回原因：{reason}</p>}
+            <Field label="你要上架什么"><textarea maxLength={2000} disabled={sending || user.developerStatus === "pending"} value={pitch} onChange={(event) => setPitch(event.target.value)} /></Field>
+            {user.developerStatus !== "pending" && <button className="btn" disabled={sending || !pitch.trim()} type="button" onClick={async () => {
+              setSending(true);
+              try { await submit("/v1/developer/application", { pitch }, setError, setDone, refresh); } finally { setSending(false); }
+            }}>{sending ? "正在提交…" : "提交入驻"}</button>}
+          </>}
         </article>
-        <article className="card">
+        {!live && <article className="card">
           <h3>推广员申请</h3>
           <p className="muted">当前状态：{user?.promoterStatus || "none"}</p>
           <Field label="推广说明"><textarea value={promo} onChange={(event) => setPromo(event.target.value)} /></Field>
           <button className="btn ghost" type="button" onClick={() => submit("/v1/developer-center/promoter-applications", { pitch: promo }, setError, setDone, refresh)}>申请推广</button>
-        </article>
+        </article>}
       </div>
     </section>
   );

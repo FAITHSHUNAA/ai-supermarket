@@ -14,7 +14,9 @@ const specifications = {web:"支持的浏览器、设备和账号要求",api:"�
 
 export function ListingDetails({ listing }) {
   if (!listing) return null;
+
   return <dl><dt>交付格式</dt><dd>{formats[listing.format]?.[0]}</dd>
+    {listing.preview_url && <div><dt>商品预览</dt><dd><img className="listing-preview" alt="卖家提供的商品样张" src={listing.preview_url} referrerPolicy="no-referrer" loading="lazy"/></dd></div>}
     <dt>{specifications[listing.format]}</dt><dd style={{whiteSpace:"pre-wrap"}}>{listing.specification}</dd>
     {Object.entries(fields).map(([key, label]) => <div key={key}><dt>{label}</dt><dd style={{whiteSpace:"pre-wrap"}}>{listing[key]}</dd></div>)}</dl>;
 }
@@ -79,6 +81,7 @@ export function ListingForm({ clientId }) {
       {step === 0 && <>
       <label>交付格式<select value={listing.format} onChange={e => update("format", e.target.value)}>{Object.entries(formats).map(([key,[label]]) => <option key={key} value={key}>{label}</option>)}</select></label>
       <p>{formats[listing.format][1]}</p>
+      <label>公开预览图（选填）<input type="url" pattern="https://.+" placeholder="真实截图或样张的 HTTPS 地址" value={listing.preview_url || ""} onChange={e=>update("preview_url",e.target.value)}/></label>
       </>}
       {step === 1 && <label>{specifications[listing.format]}<textarea required maxLength={2000} value={listing.specification || ""} onChange={e => update("specification", e.target.value)} /></label>}
       {[["contents"],["usage","privacy"],["limits","license"],["support"]][step].map(key => <label key={key}>{fields[key]}<textarea required maxLength={2000} value={listing[key] || ""} onChange={e => update(key,e.target.value)} /></label>)}

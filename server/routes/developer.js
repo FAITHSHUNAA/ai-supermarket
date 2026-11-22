@@ -239,7 +239,7 @@ function mount(app, ctx) {
       if ((body.revision || 0) !== (client.offerDraft?.revision || 0)) throw new HttpError(409,"draft_changed","草稿已在其他窗口更新，请重新打开");
       if (JSON.stringify(body).length > 24000) throw new HttpError(400,"draft_too_large","草稿内容过长");
       const listing = {};
-      for (const key of ["format","specification","contents","usage","limits","privacy","support","license","delivery_url"]) {
+      for (const key of ["format","specification","contents","usage","limits","privacy","support","license","delivery_url","preview_url"]) {
         if (typeof body.listing?.[key] === "string") listing[key] = body.listing[key];
       }
       client.offerDraft = {revision:(client.offerDraft?.revision || 0)+1, listing, price:String(body.price ?? ""), step:Math.max(0,Math.min(3,parseInt(body.step,10)||0)),

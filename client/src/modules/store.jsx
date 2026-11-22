@@ -16,6 +16,7 @@ export function Store() {
   const [error, setError] = useState(null);
   const keyword = params.get("keyword") || "";
   const category = params.get("category") || "";
+  const format=params.get("format") || "";
   const page = Math.max(1, parseInt(params.get("page"), 10) || 1);
   const [search, setSearch] = useState(keyword);
   useEffect(() => setSearch(keyword), [keyword]);
@@ -37,6 +38,7 @@ export function Store() {
     const query = new URLSearchParams({ page_size: "24", page: String(page) });
     if (keyword) query.set("keyword", keyword);
     if (category) query.set("category", category);
+    if (format) query.set("format",format);
     api(`/v1/platform/apps?${query}`)
       .then(body => {
         if (!active) return;
@@ -49,12 +51,12 @@ export function Store() {
       })
       .catch(err => { if (active) {setLoading(false);setData(null);setError(err);} });
     return () => { active = false; };
-  }, [keyword, category, page]);
+  }, [keyword, category, format, page]);
 
   return (
     <section className="section" style={{ paddingTop: 36 }}>
       <PageTitle kicker="AI ECOSYSTEM" title="AI 超市">
-        发现已上架的应用，用一个账号开通更多工具。
+        {data ? `共 ${data.pagination.total} 件商品` : "正在读取商品目录…"}
       </PageTitle>
       <form className="toolbar" role="search" onSubmit={event => {event.preventDefault(); filter("keyword", search.trim());}}>
         <input
@@ -80,16 +82,18 @@ export function Store() {
             </option>
           ))}
         </select>
-        {(keyword || category || page > 1) && <Link to="/store">清除筛选</Link>}
+        <select style={{maxWidth:180}} aria-label="交付方式" value={format} onChange={e=>filter("format",e.target.value)}><option value="">全部交付方式</option><option value="web">网页应用</option><option value="api">API 服务</option><option value="resource">数字资源</option></select>
+        {(keyword || category || format || page > 1) && <Link to="/store">清除筛选</Link>}
       </form>
       <Notice error={error} />
       {!data && loading ? <p className="muted" role="status">正在读取已上架应用…</p> : null}
-      {data && data.items.length === 0 ? <Empty>{keyword || category || page > 1 ? "没有找到商品，可以调整筛选条件。" : <>目前还没有在售商品。<Link to="/docs/listing">查看上架规范</Link></>}</Empty> : null}
+      {data && data.items.length === 0 ? <Empty>{keyword || category || format || page > 1 ? "没有找到商品，可以调整筛选条件。" : <>目前还没有在售商品。<Link to="/docs/listing">查看上架规范</Link></>}</Empty> : null}
       <div className="grid-3" ref={grid} aria-busy={loading}>
         {(data?.items || []).map((app) => (
           <DetailLink className="app-card" style={{viewTransitionName:"product-"+CSS.escape(app.client_id)}} key={app.client_id} to={`/store/${app.client_id}`}>
             <div className="faint">{app.category?.name || "未分类"}</div>
             <h3>{app.name}</h3>
+            {app.developer?.name && <small>{app.developer.name}</small>}
             <p className="muted">{app.summary}</p>
             <div className="tags">
               {(app.tags || []).map((tag) => (

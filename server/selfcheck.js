@@ -197,7 +197,7 @@ async function main() {
     const detailUrl = `/v1/platform/apps/${clientId}`;
     const submit = body => dev(offerUrl, {method:"POST", body});
     const review = (id, approve, reason) => admin("/v1/admin/actions", {method:"POST", body:{type:"offer.review", id, approve, reason}});
-    const listing = {format:"resource", contents:"模板 v1", usage:"导入模板", limits:"无额外费用", privacy:"无需上传", license:"个人使用", support:"站内售后", specification:"PDF 一份", delivery_url:"https://example.org/download", rights_confirmed:true};
+    const listing = {format:"resource", preview_url:"https://example.org/preview.webp", contents:"模板 v1", usage:"导入模板", limits:"无额外费用", privacy:"无需上传", license:"个人使用", support:"站内售后", specification:"PDF 一份", delivery_url:"https://example.org/download", rights_confirmed:true};
     assert((await api(detailUrl)).status === 404, "draft hidden");
     assert((await submit({price_points:0})).status === 400, "listing required");
     const saved = await dev(offerUrl,{method:"PUT",body:{step:2,listing,price:"0",review_notes:"private-review"}});
@@ -211,6 +211,11 @@ async function main() {
     assert((await review(revised.json.id,true)).status === 200, "approved listing");
     const publicDetail = await api(detailUrl);
     assert(publicDetail.json.commercial_offer.listing.format === "resource" && !publicDetail.text.includes(listing.delivery_url), "public description without delivery");
+    assert(publicDetail.json.commercial_offer.listing.preview_url === listing.preview_url, "approved preview visible");
+    for (const format of ["resource", "api"]) {
+      const result = await api(`/v1/platform/apps?format=${format}`);
+      assert(result.json.items.some(item => item.client_id === clientId) === (format === "resource"), "approved format filter");
+    }
     const opened = await userApi("/v1/auth/app-purchases/orders", {method:"POST", body:{client_id:clientId,channel:"points"}});
     assert(opened.status < 300 && (await userApi(detailUrl)).json.delivery_url === listing.delivery_url, "entitled delivery");
     const nextOffer = await submit({...proposal,listing:{...listing,delivery_url:"https://example.org/v2",license:"团队版"}});

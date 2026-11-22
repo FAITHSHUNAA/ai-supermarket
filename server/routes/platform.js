@@ -115,6 +115,7 @@ function mount(app, ctx) {
   app.get("/v1/platform/apps", (req, res) => {
     const db = ctx.get();
     let items = domain.listedClients(db).map((item) => domain.publicClient(db, item));
+    if(req.query.format) items=items.filter(item=>item.commercial_offer?.listing?.format===req.query.format);
     if (req.query.category) {
       items = items.filter((item) => item.category && (item.category.id === req.query.category || item.category.name === req.query.category));
     }

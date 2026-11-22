@@ -494,7 +494,7 @@ function activeEntitlements(db, userId) {
   return db.entitlements.filter((item) => item.userId === userId && item.status === "active");
 }
 
-function grantEntitlement(db, user, client, source, orderId) {
+function grantEntitlement(db, user, client, source, orderId, snapshot) {
   const plan = currentPlan(db, user);
   const owned = activeEntitlements(db, user.id);
   if (owned.some((item) => item.clientId === client.id)) return owned.find((item) => item.clientId === client.id);
@@ -502,6 +502,7 @@ function grantEntitlement(db, user, client, source, orderId) {
   if (plan.memberLevel < client.minMemberLevel) throw new HttpError(403, "membership_required", "会员等级不够，无法开通这个应用");
   const row = { id: id("ent"), userId: user.id, clientId: client.id, status: "active", source, orderId: orderId || null, createdAt: nowIso() };
   db.entitlements.push(row);
+  if (snapshot) row.snapshot = snapshot;
   return row;
 }
 
@@ -577,6 +578,8 @@ function createAppOrder(db, user, body) {
   );
   const offer = db.offers.find((item) => item.clientId === client.id && item.status === "approved");
   if (!offer) throw new HttpError(409, "offer_unconfigured", "这个应用还没有可售报价");
+  const snapshot = { offerId:offer.id, name:client.name, summary:client.summary, pricePoints:offer.pricePoints,
+    listing:offer.listing ? structuredClone(offer.listing) : null };
   if (activeEntitlements(db, user.id).some((item) => item.clientId === client.id)) {
     throw new HttpError(409, "already_owned", "你已经开通了这个应用");
   }
@@ -584,13 +587,14 @@ function createAppOrder(db, user, body) {
   if (plan.memberLevel < client.minMemberLevel) throw new HttpError(403, "membership_required", "会员等级不够");
   if (offer.pricePoints === 0 || body.channel === "points") {
     if (offer.pricePoints > 0) spendPoints(db, user.id, offer.pricePoints, `开通应用 ${client.name}`);
-    const entitlement = grantEntitlement(db, user, client, "purchase");
+    const entitlement = grantEntitlement(db, user, client, "purchase", null, snapshot);
     const split = offer.pricePoints > 0 ? applySplit(db, user, client, offer.pricePoints) : null;
     event(db, user.id, "app_purchase", `开通了 ${client.name}`);
     return { status: "paid", entitlement, split, order: null };
   }
   const order = createOrder(db, user, {
     kind: "app",
+    snapshot,
     title: `开通 ${client.name}`,
     clientId: client.id,
     points: offer.pricePoints,
@@ -704,7 +708,7 @@ function confirmOrder(db, user, outTradeNo) {
     activatePlan(db, payer, plan, order.id);
   } else if (order.kind === "app") {
     const client = must(db.clients.find((item) => item.id === order.clientId), 404, "app_not_found", "应用不存在");
-    grantEntitlement(db, payer, client, "cash", order.id);
+    grantEntitlement(db, payer, client, "cash", order.id, order.snapshot);
     applySplit(db, payer, client, order.points);
   }
   event(db, payer.id, "payment", `支付成功：${order.title}`);
@@ -904,7 +908,8 @@ function revokeKey(db, user, keyId, admin) {
 
 function createClient(db, user, body) {
   requireApprovedDeveloper(user);
-  const secret = randomToken("sec", 18);
+  if (body.product_only && (![body.name,body.summary].every(v=>typeof v === "string" && v.trim()))) throw new HttpError(400,"product_required","请填写商品名称和简介");
+  const secret = body.product_only ? null : randomToken("sec", 18);
   const client = {
     id: id("app"),
     ownerId: user.id,
@@ -920,8 +925,8 @@ function createClient(db, user, body) {
     environment: "production",
     parentClientId: null,
     redirectUris: Array.isArray(body.redirect_uris) ? body.redirect_uris : [],
-    secretHash: sha256(secret),
-    secretPreview: secret.slice(0, 12),
+    secretHash: secret ? sha256(secret) : null,
+    secretPreview: secret?.slice(0, 12) || null,
     secretPending: secret,
     webhook: null,
     createdAt: nowIso(),
@@ -932,6 +937,7 @@ function createClient(db, user, body) {
 
 function submitOffer(db, user, clientId, body) {
   const client = must(ownedClient(db, user, clientId), 404, "client_not_found", "找不到应用");
+  if (body.revision !== undefined && body.revision !== (client.offerDraft?.revision || 0)) throw new HttpError(409,"draft_changed","草稿已更新，请重新打开后提交");
   if (db.offers.some(item => item.clientId === client.id && item.status === "pending")) throw new HttpError(409, "review_pending", "已有待审核版本");
   const price = body.price_points;
   if (!Number.isSafeInteger(price) || price < 0) throw new HttpError(400, "invalid_price", "价格须为非负整数积分");
@@ -947,6 +953,7 @@ function submitOffer(db, user, clientId, body) {
     clientId: client.id,
     pricePoints: price,
     listing,
+    reviewNotes: require("./listing").reviewNotes(db, body.review_notes),
     callPricePoints: body.call_price_points ? Number(body.call_price_points) : null,
     billing: body.billing || "once",
     title: body.title || `${price} 积分开通`,
@@ -954,6 +961,7 @@ function submitOffer(db, user, clientId, body) {
     createdAt: nowIso(),
   };
   db.offers.push(offer);
+  delete client.offerDraft;
   return offer;
 }
 

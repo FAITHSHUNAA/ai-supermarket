@@ -210,7 +210,9 @@ function Calls() {
 
 function Clients() {
   const [items, setItems] = useState([]);
-  const [form, setForm] = useState({ name: "我的新应用", summary: "一句话说明", redirect_uris: "http://127.0.0.1:8787/oauth/callback" });
+  const [form, setForm] = useState({ name: "", summary: "", category_id:"" });
+  const [categories,setCategories] = useState([]);
+  useEffect(()=>{api("/v1/platform/application-categories").then(body=>setCategories(body.items)).catch(setError);},[]);
   const [secret, setSecret] = useState("");
   const [error, setError] = useState(null);
   async function load() {
@@ -219,18 +221,20 @@ function Clients() {
   useEffect(() => { load().catch(setError); }, []);
   return (
     <article className="card">
-      <h3>应用客户端</h3>
+      <h3>发布商品</h3>
       <Link to="/docs/listing">查看商品上架规范及填写模板</Link>
       <Notice error={error}>{secret}</Notice>
       <Field label="名称"><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></Field>
       <Field label="简介"><input value={form.summary} onChange={(event) => setForm({ ...form, summary: event.target.value })} /></Field>
-      <button className="btn" type="button" onClick={async () => {
+      <Field label="主题分类"><select value={form.category_id} onChange={e=>setForm({...form,category_id:e.target.value})}><option value="">未分类</option>{categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></Field>
+      <button className="btn" type="button" disabled={!form.name.trim() || !form.summary.trim()} onClick={async () => {
         try {
-          const created = await api("/v1/developer/clients", { method: "POST", body: { ...form, redirect_uris: form.redirect_uris.split(",").map((item) => item.trim()) } });
-          setSecret(`密钥只此一次：${created.client_secret}`);
+          await api("/v1/developer/clients", { method: "POST", body: { ...form, product_only:true } });
+          setSecret("商品已创建，请展开上架申请填写资料");
+          setForm({name:"",summary:"",category_id:""});
           await load();
         } catch (err) { setError(err); }
-      }}>创建应用</button>
+      }}>创建商品并填写上架资料</button>
       {items.map((item) => (
         <div key={item.client_id} style={{ marginTop: 14 }}>
           <strong>{item.name}</strong>

@@ -211,8 +211,28 @@ function mount(app, ctx) {
     const client = ctx.get().clients.find((item) => item.id === req.params.clientId && item.ownerId === user.id);
     if (!client) return res.status(404).json({ error: "client_not_found", message: "找不到应用" });
     const items = ctx.get().offers.filter((item) => item.clientId === client.id);
-    res.json({ items });
+    res.set("Cache-Control","no-store").json({ items, draft:client.offerDraft || null,
+      private_notes_enabled:!ctx.get().production || process.env.PUBLIC_ORIGIN?.startsWith("https://") === true });
   });
+  app.put("/v1/developer/clients/:clientId/commercial-offer", asyncRoute(async (req,res) => {
+    const draft = await ctx.mutate(db => {
+      const user = domain.requireDeveloper(domain.resolveActor(db,req));
+      const client = db.clients.find(row => row.id === req.params.clientId && row.ownerId === user.id);
+      if (!client) throw new HttpError(404,"client_not_found","找不到商品");
+      if (db.offers.some(row => row.clientId === client.id && row.status === "pending")) throw new HttpError(409,"review_pending","已有待审版本");
+      const body = req.body || {};
+      if ((body.revision || 0) !== (client.offerDraft?.revision || 0)) throw new HttpError(409,"draft_changed","草稿已在其他窗口更新，请重新打开");
+      if (JSON.stringify(body).length > 24000) throw new HttpError(400,"draft_too_large","草稿内容过长");
+      const listing = {};
+      for (const key of ["format","specification","contents","usage","limits","privacy","support","license","delivery_url"]) {
+        if (typeof body.listing?.[key] === "string") listing[key] = body.listing[key];
+      }
+      client.offerDraft = {revision:(client.offerDraft?.revision || 0)+1, listing, price:String(body.price ?? ""), step:Math.max(0,Math.min(3,parseInt(body.step,10)||0)),
+        reviewNotes:require("../listing").reviewNotes(db,body.review_notes)};
+      return client.offerDraft;
+    });
+    res.set("Cache-Control","no-store").json(draft);
+  }));
 
   app.post(
     "/v1/developer/clients/:clientId/commercial-offer",

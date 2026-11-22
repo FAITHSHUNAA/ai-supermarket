@@ -129,9 +129,10 @@ function mount(app, ctx) {
     const client = db.clients.find((item) => item.id === req.params.clientId);
     if (!client || client.status !== "listed" || client.environment !== "production") return res.status(404).json({ error: "app_not_found", message: "找不到应用" });
     const user = domain.resolveActor(db, req).user;
-    const owned = user ? domain.activeEntitlements(db, user.id).some((item) => item.clientId === client.id) : false;
+    const entitlement = user && domain.activeEntitlements(db, user.id).find(item => item.clientId === client.id);
     const offer = db.offers.find(item => item.clientId === client.id && item.status === "approved");
-    res.json({ ...domain.publicClient(db, client), owned, delivery_url: owned ? offer?.listing?.delivery_url : undefined });
+    const delivery = entitlement?.snapshot ? entitlement.snapshot.listing?.delivery_url : offer?.listing?.delivery_url;
+    res.set("Cache-Control","private, no-store").json({ ...domain.publicClient(db, client), owned:!!entitlement, delivery_url: entitlement ? delivery : undefined });
   });
 
   app.get(

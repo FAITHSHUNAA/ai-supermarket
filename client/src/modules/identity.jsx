@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { api } from "../api";
 import { useSession } from "../shell/session";
 import { Field, Notice } from "../shell/ui";
+import { ListingDetails } from "./listing";
 
 export function Login() {
   const [params] = useSearchParams();
@@ -210,9 +211,7 @@ function Billing() {
   const [reason, setReason] = useState("不想继续使用");
   const [error, setError] = useState(null);
   async function load() {
-    const [mine, list] = await Promise.all([api("/v1/auth/apps"), api("/v1/auth/refunds")]);
-    setApps(mine.items);
-    setRefunds(list.items);
+    await Promise.all([api("/v1/auth/apps").then(mine=>setApps(mine.items)), api("/v1/auth/refunds").then(list=>setRefunds(list.items))]);
   }
   useEffect(() => {
     load().catch(setError);
@@ -223,7 +222,13 @@ function Billing() {
       <Notice error={error} />
       {apps.map((item) => (
         <div className="row" key={item.id} style={{ justifyContent: "space-between" }}>
-          <span>{item.app?.name || item.clientId}</span>
+          <details><summary>{item.snapshot?.name || item.app?.name || item.clientId} · 领取与购买记录</summary>
+            {item.snapshot ? <>
+              <p>开通时价格：{item.snapshot.pricePoints} 积分 · {item.createdAt?.slice(0,10)}</p>
+              <ListingDetails listing={item.snapshot.listing}/>
+              {item.snapshot.listing?.delivery_url && <a className="btn" href={item.snapshot.listing.delivery_url} target="_blank" rel="noreferrer">领取购买版本</a>}
+            </> : <p>历史记录未保存成交版本。{item.app?.status === "listed" && <Link to={`/store/${item.clientId}`}>查看商品详情</Link>}</p>}
+          </details>
           <button
             className="btn tiny ghost"
             type="button"

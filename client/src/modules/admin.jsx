@@ -188,7 +188,7 @@ function Offers({ data, act }) {
       render={(offer) => (
         <>
           <td>{data.clients.find(item => item.client_id === offer.clientId)?.name || offer.clientId}<ListingDetails listing={offer.listing} />{offer.listing && <a href={offer.listing.delivery_url} target="_blank" rel="noreferrer">检查交付入口</a>}{offer.reason && <p>{offer.reason}</p>}</td>
-          <td>{offer.pricePoints}</td>
+          <td>{offer.pricePoints}{offer.reviewNotes && <p>审核备注：{offer.reviewNotes}</p>}</td>
           <td>{offer.status}</td>
           <td className="row">
             <button className="btn tiny" type="button" disabled={offer.status !== "pending" || !offer.listing} onClick={() => act({ type: "offer.review", id: offer.id, approve: true })}>通过并上架</button>

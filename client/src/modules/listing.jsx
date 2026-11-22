@@ -25,13 +25,30 @@ export function ListingForm({ clientId }) {
   const [latest, setLatest] = useState(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [step,setStep] = useState(0);
+  const [revision,setRevision] = useState(0);
+  const [ready,setReady] = useState(false);
+  const [reviewNotes,setReviewNotes] = useState("");
+  const [privateNotes,setPrivateNotes] = useState(false);
+  const endpoint = `/v1/developer/clients/${clientId}/commercial-offer`;
+  const steps = ["商品展示","内容与使用","价格与授权","交付与售后"];
   function update(key, value) { setListing(prev => ({...prev, [key]:value})); }
   useEffect(() => {
     let active = true;
-    api(`/v1/developer/clients/${clientId}/commercial-offer`).then(({items}) => {
-      if (!active || !items.length) return;
+    api(endpoint).then(({items,draft,private_notes_enabled}) => {
+      if (!active) return;
+      setReady(true);
+      setPrivateNotes(private_notes_enabled);
       const row = items.at(-1);
-      setLatest(row);
+      setLatest(row || null);
+      if (draft) {
+        setRevision(draft.revision); setStep(draft.step); setPrice(draft.price);
+        setListing({format:"web",...draft.listing}); setReviewNotes(draft.reviewNotes || "");
+        setMessage("已恢复上次保存的草稿");
+        return;
+      }
+      if (!row) return;
+      setReviewNotes(row.reviewNotes || "");
       setPrice(String(row.pricePoints));
       if (row.listing) setListing({...row.listing, rights_confirmed:false});
     }).catch(err => { if (active) setMessage(err.message); });
@@ -39,22 +56,42 @@ export function ListingForm({ clientId }) {
   }, [clientId]);
   async function submit(event) {
     event.preventDefault();
+    if (step < 3) {setStep(step+1);return;}
     setBusy(true);
     try {
-      setLatest(await api(`/v1/developer/clients/${clientId}/commercial-offer`, {method:"POST", body:{price_points:Number(price), listing}}));
+      setLatest(await api(endpoint, {method:"POST", body:{price_points:Number(price), listing,revision,review_notes:reviewNotes}}));
+      setRevision(0);
       setMessage("已提交审核");
     } catch (err) { setMessage(err.message); } finally { setBusy(false); }
   }
+  async function save() {
+    setBusy(true);
+    try {
+      const draft = await api(endpoint,{method:"PUT",body:{listing,price,step,revision,review_notes:reviewNotes}});
+      setRevision(draft.revision);
+      setMessage("草稿已保存，可以稍后继续");
+    } catch(err) { setMessage(err.message); } finally {setBusy(false);}
+  }
   return <details><summary>上架申请{latest && " · " + ({pending:"审核中",approved:"已通过",rejected:"已退回",superseded:"已替换"}[latest.status] || latest.status)}</summary>
     {latest?.reason && <p>退回原因：{latest.reason}</p>}
-    <form onSubmit={submit}><fieldset disabled={busy || latest?.status === "pending"}>
+    <form onSubmit={submit}><fieldset disabled={!ready || busy || latest?.status === "pending"}>
+      <legend>第 {step+1} 步，共 4 步 · {steps[step]}</legend>
+      {step === 0 && <>
       <label>交付格式<select value={listing.format} onChange={e => update("format", e.target.value)}>{Object.entries(formats).map(([key,[label]]) => <option key={key} value={key}>{label}</option>)}</select></label>
       <p>{formats[listing.format][1]}</p>
-      <label>{specifications[listing.format]}<textarea required maxLength={2000} value={listing.specification || ""} onChange={e => update("specification", e.target.value)} /></label>
-      {Object.entries(fields).map(([key,label]) => <label key={key}>{label}<textarea required maxLength={2000} value={listing[key] || ""} onChange={e => update(key,e.target.value)} /></label>)}
-      <label>开通后展示的 HTTPS 入口<input type="url" required placeholder="https://" value={listing.delivery_url || ""} onChange={e => update("delivery_url",e.target.value)} /></label>
-      <label>一次性开通价格（整数积分，免费填 0）<input type="number" required min="0" step="1" value={price} onChange={e => setPrice(e.target.value)} /></label>
+      </>}
+      {step === 1 && <label>{specifications[listing.format]}<textarea required maxLength={2000} value={listing.specification || ""} onChange={e => update("specification", e.target.value)} /></label>}
+      {[["contents"],["usage","privacy"],["limits","license"],["support"]][step].map(key => <label key={key}>{fields[key]}<textarea required maxLength={2000} value={listing[key] || ""} onChange={e => update(key,e.target.value)} /></label>)}
+      {step === 2 && <label>一次性开通价格（整数积分，免费填 0）<input type="number" required min="0" step="1" value={price} onChange={e => setPrice(e.target.value)} /></label>}
+      {step === 3 && <>
+      <label>买家交付地址<input type="url" required pattern="https://.+" placeholder="https://" value={listing.delivery_url || ""} onChange={e => update("delivery_url",e.target.value)} /></label>
+      {privateNotes ? <label>审核说明（仅卖家和审核员可见）<textarea maxLength={2000} value={reviewNotes} onChange={e=>setReviewNotes(e.target.value)} placeholder="填写审核步骤或授权说明，请勿填写永久密钥"/></label> : <p>本站启用 HTTPS 后可提交私密审核资料。</p>}
       <label><input type="checkbox" required checked={!!listing.rights_confirmed} onChange={e => update("rights_confirmed",e.target.checked)} />我拥有商品及所附素材的分发权，已核对交付入口及上述说明。</label>
-      <button className="btn">提交审核</button>
+      </>}
+      <div className="row">
+        {step > 0 && <button className="btn ghost" type="button" onClick={()=>setStep(step-1)}>上一步</button>}
+        <button className="btn ghost" type="button" onClick={save}>保存草稿</button>
+        <button className="btn">{step===3 ? "提交审核" : "下一步"}</button>
+      </div>
     </fieldset></form><p role="status">{message}</p></details>;
 }

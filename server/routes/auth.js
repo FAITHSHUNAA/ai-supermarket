@@ -254,7 +254,7 @@ function mount(app, ctx) {
         ...item,
         app: domain.publicClient(db, db.clients.find((client) => client.id === item.clientId) || { id: item.clientId, name: "已下架", tags: [], status: "missing" }),
       }));
-      res.json({ items });
+      res.set("Cache-Control","private, no-store").json({ items });
     })
   );
 }

@@ -23,4 +23,10 @@ function validateListing(value = {}) {
   return { ...listing, delivery_url: url.href, rights_confirmed: true };
 }
 
-module.exports = { validateListing };
+function reviewNotes(db, value) {
+  if (!value) return "";
+  if (typeof value !== "string" || value.length > 2000) invalid("审核备注最多 2000 字");
+  if (db.production && !process.env.PUBLIC_ORIGIN?.startsWith("https://")) invalid("请在 HTTPS 启用后提交私密审核备注");
+  return value.trim();
+}
+module.exports = { validateListing, reviewNotes };

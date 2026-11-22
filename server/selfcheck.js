@@ -199,7 +199,10 @@ async function main() {
     const listing = {format:"resource", contents:"模板 v1", usage:"导入模板", limits:"无额外费用", privacy:"无需上传", license:"个人使用", support:"站内售后", specification:"PDF 一份", delivery_url:"https://example.org/download", rights_confirmed:true};
     assert((await api(detailUrl)).status === 404, "draft hidden");
     assert((await submit({price_points:0})).status === 400, "listing required");
-    const proposal = {price_points:0, listing};
+    const saved = await dev(offerUrl,{method:"PUT",body:{step:2,listing,price:"0",review_notes:"private-review"}});
+    assert(saved.json.revision === 1 && (await dev(offerUrl)).json.draft.step === 2,"resume server draft");
+    assert((await dev(offerUrl,{method:"PUT",body:{revision:0}})).status === 409,"reject stale draft save");
+    const proposal = {price_points:0, listing,review_notes:"private-review"};
     const firstOffer = await submit(proposal);
     assert(firstOffer.status === 201 && (await submit(proposal)).status === 409, "single pending listing");
     assert((await review(firstOffer.json.id,false,"补充交付说明")).json.reason === "补充交付说明", "rejection feedback");
@@ -209,6 +212,14 @@ async function main() {
     assert(publicDetail.json.commercial_offer.listing.format === "resource" && !publicDetail.text.includes(listing.delivery_url), "public description without delivery");
     const opened = await userApi("/v1/auth/app-purchases/orders", {method:"POST", body:{client_id:clientId,channel:"points"}});
     assert(opened.status < 300 && (await userApi(detailUrl)).json.delivery_url === listing.delivery_url, "entitled delivery");
+    const nextOffer = await submit({...proposal,listing:{...listing,delivery_url:"https://example.org/v2",license:"团队版"}});
+    assert((await review(nextOffer.json.id,true)).status===200,"approve second version");
+    assert((await userApi(detailUrl)).json.delivery_url===listing.delivery_url,"original delivery after update");
+    assert(!publicDetail.text.includes("private-review") && !(await userApi("/v1/auth/apps")).text.includes("private-review"),"review materials isolated");
+    const hidden = await admin("/v1/admin/actions",{method:"POST",body:{type:"client.status",client_id:clientId,status:"unlisted"}});
+    assert(hidden.status===200 && (await api(detailUrl)).status===404,"unlisted from public store");
+    const history = (await userApi("/v1/auth/apps")).json.items.find(item=>item.clientId===clientId);
+    assert(history.snapshot.listing.delivery_url===listing.delivery_url && history.snapshot.listing.license===listing.license,"historical fulfillment after delisting");
     const snap = await admin("/v1/admin/snapshot");
     assert(snap.status === 200 && snap.json.users.length >= 4, "snapshot");
     const reviewed = await admin("/v1/admin/actions", {

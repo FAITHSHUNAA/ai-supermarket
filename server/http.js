@@ -7,6 +7,7 @@ function asyncRoute(fn) {
 function cookie(res, sessionId) {
   res.cookie("sid", sessionId, {
     httpOnly: true,
+    secure: process.env.PUBLIC_ORIGIN?.startsWith("https://") === true,
     sameSite: "lax",
     path: "/",
     maxAge: 14 * 24 * 3600 * 1000,

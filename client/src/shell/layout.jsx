@@ -23,7 +23,7 @@ export function Layout() {
             <small>AI MARKET</small>
           </span>
         </Link>
-        <Dock />
+        <Dock commercial={settings?.capabilities?.recharge !== false}/>
         <div className="nav-side">
           <NavLink to="/register-developer">开发者中心</NavLink>
           {user ? (
@@ -52,8 +52,8 @@ export function Layout() {
           <h2>产品服务</h2>
           <ul>
             <li><Link to="/store">应用商店</Link></li>
-            <li><Link to="/recharge">充值中心</Link></li>
-            <li><Link to="/membership">订阅服务</Link></li>
+            {settings?.capabilities?.recharge !== false && <li><Link to="/recharge">充值中心</Link></li>}
+            {settings?.capabilities?.membership !== false && <li><Link to="/membership">订阅服务</Link></li>}
             <li><Link to="/profile">个人中心</Link></li>
           </ul>
         </div>
@@ -72,7 +72,7 @@ export function Layout() {
             <li><Link to="/about">关于我们</Link></li>
             <li><Link to="/legal/terms-of-service">用户协议</Link></li>
             <li><Link to="/legal/privacy-policy">隐私政策</Link></li>
-            <li><Link to="/admin">管理后台</Link></li>
+            {settings?.capabilities?.admin !== false && <li><Link to="/admin">管理后台</Link></li>}
           </ul>
         </div>
       </footer>

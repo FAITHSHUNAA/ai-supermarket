@@ -74,16 +74,21 @@ function dataFile() {
 
 function createStore(seed) {
   const file = dataFile();
+  const sqlite=process.env.MARKET_STORAGE==="sqlite" ? require("./sqlite").open(path.join(path.dirname(file),"market.sqlite")) : null;
   let db;
-  if (fs.existsSync(file)) {
+  const stored=sqlite?.load();
+  if(stored) db=stored;
+  else if (fs.existsSync(file)) {
     db = JSON.parse(fs.readFileSync(file, "utf8"));
   } else {
     db = seed();
-    persist(db, file);
+    if(!sqlite) persist(db, file);
   }
+  if(sqlite)sqlite.save(db);
   let queue = Promise.resolve();
 
   function persist(current, target = file) {
+    if(sqlite)return sqlite.save(current);
     const tmp = `${target}.${process.pid}.tmp`;
     fs.writeFileSync(tmp, JSON.stringify(current, null, 2));
     fs.renameSync(tmp, target);

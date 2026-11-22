@@ -78,8 +78,10 @@ async function submit(path, body, setError, setDone, refresh) {
 }
 
 export function Developer() {
-  const { tab = "" } = useParams();
-  const { user } = useSession();
+  const { tab:requestedTab = "" } = useParams();
+  const { user,settings } = useSession();
+  const allowed=settings?.capabilities?.developer_tabs;
+  const tab=requestedTab || allowed?.[0] || "";
   if (user === undefined) return <p>正在读取账号…</p>;
   if (!user) return <p className="section">请先 <Link to="/login?return_to=/developer">登录</Link>。</p>;
   if (user.developerStatus !== "approved" && user.role !== "admin") {
@@ -94,7 +96,7 @@ export function Developer() {
   return (
     <section className="layout">
       <aside className="side">
-        {tabs.map(([key, label]) => (
+        {tabs.filter(([key])=>!allowed || allowed.includes(key)).map(([key, label]) => (
           <Link key={key} className={tab === key ? "active" : ""} to={key ? `/developer/${key}` : "/developer"}>{label}</Link>
         ))}
       </aside>
@@ -210,6 +212,7 @@ function Calls() {
 
 function Clients() {
   const [items, setItems] = useState([]);
+  const [reports,setReports]=useState([]);
   const [form, setForm] = useState({ name: "", summary: "", category_id:"" });
   const [categories,setCategories] = useState([]);
   useEffect(()=>{api("/v1/platform/application-categories").then(body=>setCategories(body.items)).catch(setError);},[]);
@@ -217,11 +220,16 @@ function Clients() {
   const [error, setError] = useState(null);
   async function load() {
     setItems((await api("/v1/developer/clients?page_size=50")).items);
+    setReports((await api("/v1/developer/delivery-reports")).items);
   }
   useEffect(() => { load().catch(setError); }, []);
   return (
     <article className="card">
       <h3>发布商品</h3>
+      {reports.map(r=><form key={r.id} onSubmit={async e=>{
+        e.preventDefault();const url=new FormData(e.currentTarget).get("url");
+        try{await api("/v1/developer/delivery-reports",{method:"POST",body:{id:r.id,url}});await load();}catch(err){setError(err);}
+      }}><label>{items.find(c=>c.client_id===r.clientId)?.name || r.clientId} · 买家报告链接失效<input name="url" type="url" placeholder="https://" required/></label><button className="btn ghost">{r.submitted?"更新待审补发链接":"提交补发链接"}</button></form>)}
       <Link to="/docs/listing">查看商品上架规范及填写模板</Link>
       <Notice error={error}>{secret}</Notice>
       <Field label="名称"><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></Field>
@@ -351,7 +359,10 @@ function Settlements() {
 
 function DevWallet() {
   const [data, setData] = useState(null);
-  useEffect(() => { api("/v1/developer/wallet").then(setData).catch(() => {}); }, []);
+  const [error,setError]=useState(null);
+  const {settings}=useSession();
+  useEffect(() => { api("/v1/developer/wallet").then(setData).catch(setError); }, []);
+  if(!data)return error?<Notice error={error}/>:<p>正在读取账户…</p>;
   const wallet = data?.wallet;
   return (
     <article className="card">
@@ -360,7 +371,7 @@ function DevWallet() {
         <div className="stat"><span className="muted">积分，只用于调用</span><b>{wallet?.points ?? "—"}</b></div>
         <div className="stat"><span className="muted">佣金，只走结算</span><b>{yuan(wallet?.commission_cents || 0)}</b></div>
       </div>
-      <p><Link to="/recharge">给积分账户充值</Link></p>
+      {settings?.capabilities?.recharge!==false && <p><Link to="/recharge">给积分账户充值</Link></p>}
     </article>
   );
 }

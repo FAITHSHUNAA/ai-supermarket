@@ -153,7 +153,7 @@ export function Pay() {
         <div className="faint">{live ? "商户收银台" : "演示收银台"}</div>
         <h2>{order.title}</h2>
         <p className="price">{yuan(order.amount_cents)}</p>
-        <p className="muted">到账 {order.points} 积分 · 状态 {order.status}</p>
+        <p className="muted">{order.kind==="recharge" && `到账 ${order.points} 积分 · `}状态：{({pending:"待付款",paid:"支付成功",closed:"已关闭",paid_unfulfilled:"已收款，待处理交付或退款",refunded:"已原路退款"})[order.status] || order.status}</p>
         <p className="muted">{live ? "请在支付应用中核对商户和金额。支付平台确认到账后，订单状态会自动更新。" : "本地演示订单。"}</p>
         <Notice error={error} />
         {order.status === "pending" ? (
@@ -166,7 +166,7 @@ export function Pay() {
           </>
         ) : (
           <div className="row">
-            <button className="btn" type="button" onClick={() => navigate("/profile/wallet")}>查看钱包</button>
+            <button className="btn" type="button" onClick={() => navigate(order.kind==="app"?"/profile/billing":"/profile/wallet")}>{order.kind==="app"?"查看领取与售后":"查看钱包"}</button>
             <Link className="btn ghost" to="/store">继续逛</Link>
           </div>
         )}

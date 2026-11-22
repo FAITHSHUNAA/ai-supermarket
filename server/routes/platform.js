@@ -13,6 +13,7 @@ function mount(app, ctx) {
     const settings = ctx.get().settings;
     res.json({
       brand_name: settings.brandName,
+      capabilities:ctx.get().production ? {recharge:false,membership:false,admin:false,developer_tabs:["clients","wallet"],profile_tabs:["","wallet","billing","usage"]} : null,
       tagline: settings.tagline,
       description: settings.description,
       keywords: settings.keywords,
@@ -131,7 +132,7 @@ function mount(app, ctx) {
     const user = domain.resolveActor(db, req).user;
     const entitlement = user && domain.activeEntitlements(db, user.id).find(item => item.clientId === client.id);
     const offer = db.offers.find(item => item.clientId === client.id && item.status === "approved");
-    const delivery = entitlement?.snapshot ? entitlement.snapshot.listing?.delivery_url : offer?.listing?.delivery_url;
+    const delivery = entitlement?.replacementUrl || (entitlement?.snapshot ? entitlement.snapshot.listing?.delivery_url : offer?.listing?.delivery_url);
     res.set("Cache-Control","private, no-store").json({ ...domain.publicClient(db, client), owned:!!entitlement, delivery_url: entitlement ? delivery : undefined });
   });
 

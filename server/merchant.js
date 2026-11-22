@@ -37,17 +37,59 @@ async function checkout(order) {
     requireValid(result.code === "10000" && result.qrCode && result.outTradeNo === order.outTradeNo);
     return result.qrCode;
   }
-  const path = "/v3/pay/transactions/native", timestamp = String(Math.floor(Date.now()/1000)), nonce = crypto.randomBytes(16).toString("hex");
-  const body = JSON.stringify({appid:process.env.WX_APP_ID,mchid:process.env.WX_MCH_ID,description:order.title,out_trade_no:order.outTradeNo,notify_url:notify,amount:{total:order.amountCents,currency:"CNY"}});
-  const sig = crypto.sign("RSA-SHA256",Buffer.from(`POST\n${path}\n${timestamp}\n${nonce}\n${body}\n`),key("WX_PRIVATE_KEY_FILE")).toString("base64");
-  const authorization = `WECHATPAY2-SHA256-RSA2048 mchid="${process.env.WX_MCH_ID}",nonce_str="${nonce}",timestamp="${timestamp}",serial_no="${process.env.WX_MCH_SERIAL}",signature="${sig}"`;
-  const response = await fetch("https://api.mch.weixin.qq.com"+path,{method:"POST",headers:{authorization,"content-type":"application/json",accept:"application/json","Wechatpay-Serial":process.env.WX_PLATFORM_KEY_ID},body,signal:AbortSignal.timeout(15000)});
-  const raw = await response.text();
-  requireValid(response.ok);
-  verifyWechat(response.headers,raw);
-  const result = JSON.parse(raw);
+  const result = await wx("POST","/v3/pay/transactions/native",{appid:process.env.WX_APP_ID,mchid:process.env.WX_MCH_ID,description:order.title,out_trade_no:order.outTradeNo,notify_url:notify,amount:{total:order.amountCents,currency:"CNY"}});
   requireValid(result.code_url?.startsWith("weixin://"));
   return result.code_url;
+}
+async function wx(method,path,payload) {
+  const timestamp = String(Math.floor(Date.now()/1000)), nonce = crypto.randomBytes(16).toString("hex");
+  const body = payload ? JSON.stringify(payload) : "";
+  const sig = crypto.sign("RSA-SHA256",Buffer.from(`${method}\n${path}\n${timestamp}\n${nonce}\n${body}\n`),key("WX_PRIVATE_KEY_FILE")).toString("base64");
+  const authorization = `WECHATPAY2-SHA256-RSA2048 mchid="${process.env.WX_MCH_ID}",nonce_str="${nonce}",timestamp="${timestamp}",serial_no="${process.env.WX_MCH_SERIAL}",signature="${sig}"`;
+  const response = await fetch("https://api.mch.weixin.qq.com"+path,{method,headers:{authorization,"content-type":"application/json",accept:"application/json","Wechatpay-Serial":process.env.WX_PLATFORM_KEY_ID},body:body || undefined,signal:AbortSignal.timeout(15000)});
+  const raw = await response.text();
+  if(response.status===404 && method==="GET" && path.startsWith("/v3/pay/transactions/") && response.headers.get("wechatpay-signature")){
+    verifyWechat(response.headers,raw);
+    if(JSON.parse(raw).code==="ORDER_NOT_EXIST")return {missing:true};
+  }
+  requireValid(response.ok);
+  verifyWechat(response.headers,raw);
+  return raw ? JSON.parse(raw) : {};
+}
+async function query(order) {
+  requireChannel(order.channel);
+  if(order.channel==="alipay"){
+    const r=await alipay().exec("alipay.trade.query",{bizContent:{outTradeNo:order.outTradeNo}},{validateSign:true});
+    if(r.subCode==="ACQ.TRADE_NOT_EXIST") return {status:"missing"};
+    requireValid(r.code==="10000" && r.outTradeNo===order.outTradeNo);
+    if(["TRADE_SUCCESS","TRADE_FINISHED"].includes(r.tradeStatus)) return {status:"paid",order:r.outTradeNo,cents:Math.round(Number(r.totalAmount)*100),transaction:r.tradeNo};
+    return {status:r.tradeStatus==="TRADE_CLOSED"?"closed":"pending"};
+  }
+  const r=await wx("GET","/v3/pay/transactions/out-trade-no/"+encodeURIComponent(order.outTradeNo)+"?mchid="+process.env.WX_MCH_ID);
+  if(r.missing)return {status:"missing"};
+  requireValid(r.mchid===process.env.WX_MCH_ID && r.appid===process.env.WX_APP_ID && r.out_trade_no===order.outTradeNo);
+  if(r.trade_state==="SUCCESS"){requireValid(r.amount.currency==="CNY");return {status:"paid",order:r.out_trade_no,cents:r.amount.total,transaction:r.transaction_id};}
+  return {status:r.trade_state==="CLOSED"?"closed":"pending"};
+}
+async function close(order) {
+  if(order.channel==="wechat") return wx("POST","/v3/pay/transactions/out-trade-no/"+encodeURIComponent(order.outTradeNo)+"/close",{mchid:process.env.WX_MCH_ID});
+  const r=await alipay().exec("alipay.trade.close",{bizContent:{outTradeNo:order.outTradeNo}},{validateSign:true});
+  requireValid(r.code==="10000" && r.outTradeNo===order.outTradeNo);
+}
+async function refund(order,id,poll) {
+  requireChannel(order.channel);
+  if(order.channel==="wechat"){
+    const r=poll ? await wx("GET","/v3/refund/domestic/refunds/"+encodeURIComponent(id)) : await wx("POST","/v3/refund/domestic/refunds",{transaction_id:order.providerTransaction,out_refund_no:id,amount:{refund:order.amountCents,total:order.amountCents,currency:"CNY"}});
+    requireValid(r.out_refund_no===id && r.transaction_id===order.providerTransaction && r.amount.refund===order.amountCents);
+    return r.status==="SUCCESS"?"success":r.status==="PROCESSING"?"processing":"failed";
+  }
+  const method=poll?"alipay.trade.fastpay.refund.query":"alipay.trade.refund";
+  const bizContent={outTradeNo:order.outTradeNo,outRequestNo:id};
+  if(!poll) bizContent.refundAmount=(order.amountCents/100).toFixed(2);
+  const r=await alipay().exec(method,{bizContent},{validateSign:true});
+  requireValid(r.code==="10000" && r.outTradeNo===order.outTradeNo && r.tradeNo===order.providerTransaction);
+  if(poll) return r.refundStatus==="REFUND_SUCCESS" && Math.round(Number(r.refundAmount)*100)===order.amountCents?"success":"processing";
+  return r.fundChange==="Y" && Math.round(Number(r.refundFee)*100)===order.amountCents?"success":"processing";
 }
 function notification(channel,req) {
   requireChannel(channel);
@@ -67,4 +109,4 @@ function notification(channel,req) {
   requireValid(tx.appid === process.env.WX_APP_ID && tx.mchid === process.env.WX_MCH_ID && tx.trade_state === "SUCCESS" && tx.amount.currency === "CNY");
   return {order:tx.out_trade_no,transaction:tx.transaction_id,cents:tx.amount.total};
 }
-module.exports = {enabled,requireChannel,requireValid,checkout,notification};
+module.exports = {enabled,requireChannel,requireValid,checkout,notification,query,close,refund};

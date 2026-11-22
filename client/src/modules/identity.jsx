@@ -60,7 +60,7 @@ export function Login() {
         await api("/v1/auth/login", { method: "POST", body: { account: form.phone, password: form.password, captcha_id: captcha?.captcha_id, captcha_answer: form.answer } });
       }
       await refresh();
-      navigate(returnTo);
+      navigate(usernameMode && mode==="register" ? "/recovery" : returnTo);
     } catch (err) {
       setError(err);
     }
@@ -71,6 +71,7 @@ export function Login() {
       <div>
         <div className="kicker">一个账号走完全站</div>
         <h2>登录 AI 超市</h2>
+        {usernameMode && <Link to="/recovery">使用恢复码找回账号</Link>}
         {usernameMode ? <p>用户名为 3 至 32 位字母、数字或下划线，以字母开头。设置 12 至 128 位本站专用密码。</p> : settings && <p>此环境支持手机号登录。</p>}
       </div>
       <form className="card" onSubmit={submit}>
@@ -132,14 +133,15 @@ const profileTabs = [
 
 export function Profile() {
   const { tab = "" } = useParams();
-  const { user, refresh } = useSession();
+  const { user, refresh, settings } = useSession();
   const navigate = useNavigate();
   if (user === null) return <NeedLogin />;
   if (!user) return <p>正在读取账号…</p>;
   return (
     <section className="layout">
       <aside className="side">
-        {profileTabs.map(([key, label]) => (
+        <Link to="/recovery">生成一次性恢复码</Link>
+        {profileTabs.filter(([key])=>!settings?.capabilities || settings.capabilities.profile_tabs.includes(key)).map(([key, label]) => (
           <Link key={key} className={tab === key ? "active" : ""} to={key ? `/profile/${key}` : "/profile"}>{label}</Link>
         ))}
         <button
@@ -185,22 +187,25 @@ function Overview({ user }) {
 }
 
 function Wallet() {
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState(null);
+  const [error,setError]=useState(null);
+  const {settings}=useSession();
   useEffect(() => {
-    api("/v1/auth/points-history").then((body) => setItems(body.items)).catch(() => {});
+    api("/v1/auth/points-history").then((body) => setItems(body.items)).catch(setError);
   }, []);
   return (
     <article className="card">
       <h3>积分流水</h3>
+      <Notice error={error}/>{!error && !items && <p>正在加载流水…</p>}{items?.length===0 && <p>暂无积分流水。</p>}
       <table>
         <thead><tr><th>时间</th><th>类型</th><th>积分</th><th>说明</th></tr></thead>
         <tbody>
-          {items.map((item) => (
+          {(items || []).map((item) => (
             <tr key={item.id}><td>{item.createdAt?.slice(0, 16).replace("T", " ")}</td><td>{item.type}</td><td>{item.points}</td><td>{item.reason}</td></tr>
           ))}
         </tbody>
       </table>
-      <p><Link to="/recharge">去充值</Link></p>
+      {settings?.capabilities?.recharge!==false && <p><Link to="/recharge">去充值</Link></p>}
     </article>
   );
 }
@@ -226,7 +231,10 @@ function Billing() {
             {item.snapshot ? <>
               <p>开通时价格：{item.snapshot.pricePoints} 积分 · {item.createdAt?.slice(0,10)}</p>
               <ListingDetails listing={item.snapshot.listing}/>
-              {item.snapshot.listing?.delivery_url && <a className="btn" href={item.snapshot.listing.delivery_url} target="_blank" rel="noreferrer">领取购买版本</a>}
+              {item.delivery_status==="blocked" ? <p>商品交付已暂停，可在此申请售后。</p> : (item.replacementUrl || item.snapshot.listing?.delivery_url) && <a className="btn" href={item.replacementUrl || item.snapshot.listing.delivery_url} target="_blank" rel="noreferrer">{item.replacementUrl?"领取补发版本":"领取购买版本"}</a>}
+              <button className="btn ghost" disabled={item.delivery_status==="pending"} onClick={async()=>{
+                try{await api("/v1/auth/delivery-report",{method:"POST",body:{entitlement_id:item.id}});await load();}catch(err){setError(err);}
+              }}>{item.delivery_status==="pending"?"交付问题处理中":"报告交付链接失效"}</button>
             </> : <p>历史记录未保存成交版本。{item.app?.status === "listed" && <Link to={`/store/${item.clientId}`}>查看商品详情</Link>}</p>}
           </details>
           <button
@@ -254,13 +262,14 @@ function Billing() {
 
 function Usage() {
   const [data, setData] = useState(null);
+  const [error,setError]=useState(null);
   useEffect(() => {
-    api("/v1/auth/usage").then(setData).catch(() => {});
+    api("/v1/auth/usage").then(setData).catch(setError);
   }, []);
   return (
     <article className="card">
       <h3>调用记录</h3>
-      <p className="muted">累计 {data?.points || 0} 积分</p>
+      <Notice error={error}/>{data ? <p className="muted">累计 {data.points || 0} 积分</p> : !error && <p>正在加载用量…</p>}
       <table>
         <tbody>
           {(data?.calls || []).map((item) => (

@@ -7,6 +7,7 @@ import { Home } from "./modules/home";
 import { AppDetail, Store } from "./modules/store";
 import { Membership, Pay, Recharge } from "./modules/billing";
 import { Login, Profile } from "./modules/identity";
+import { Recovery } from "./modules/recovery";
 import { Developer, DeveloperApply } from "./modules/developer";
 import { Docs } from "./modules/docs";
 import { Admin } from "./modules/admin";
@@ -28,6 +29,7 @@ export function App() {
           <Route path="recharge" element={<Recharge />} />
           <Route path="pay/:outTradeNo" element={<Pay />} />
           <Route path="login" element={<Login />} />
+          <Route path="recovery" element={<Recovery />} />
           <Route path="register-developer" element={<DeveloperApply />} />
           <Route path="profile" element={<Profile />} />
           <Route path="profile/:tab" element={<Profile />} />

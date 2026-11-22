@@ -2,6 +2,42 @@ const domain = require("../domain");
 const { asyncRoute, finishLogin, clearCookie } = require("../http");
 
 function mount(app, ctx) {
+  const {randomToken,sha256,verifyPassword,hashPassword,HttpError}=require("../lib");
+  app.post("/v1/auth/delivery-report",asyncRoute(async(req,res)=>{
+    await ctx.mutate(db=>{
+      const user=domain.requireUser(domain.resolveActor(db,req));
+      const entitlement=domain.activeEntitlements(db,user.id).find(e=>e.id===req.body.entitlement_id);
+      if(!entitlement)throw new HttpError(404,"missing","没有此购买记录");
+      const reports=db.deliveryReports ||= [];
+      if(!reports.some(r=>r.entitlementId===entitlement.id && r.status==="pending"))
+        reports.push({id:randomToken("issue",12),entitlementId:entitlement.id,clientId:entitlement.clientId,status:"pending",createdAt:new Date().toISOString()});
+    });
+    res.json({ok:true});
+  }));
+  app.post("/v1/auth/recovery/issue",asyncRoute(async(req,res)=>{
+    const code=await ctx.mutate(db=>{
+      const actor=domain.requireUser(domain.resolveActor(db,req));
+      const u=domain.findUser(db,actor.id);
+      if(typeof req.body.password!=="string" || !verifyPassword(req.body.password,u.passwordHash)) throw new HttpError(403,"password_required","当前密码不正确");
+      const token=randomToken("recover",24);
+      u.recoveryHash=sha256(token);
+      return token;
+    });
+    res.set("Cache-Control","no-store").json({code});
+  }));
+  app.post("/v1/auth/recovery/reset",asyncRoute(async(req,res)=>{
+    const {username,code,password}=req.body;
+    if(typeof password!=="string" || password.length<12 || password.length>128) throw new HttpError(400,"weak_password","密码须为 12 至 128 个字符");
+    await ctx.mutate(db=>{
+      const u=db.users.find(row=>row.username && row.username===String(username).trim().toLowerCase());
+      if(!u || !code || u.recoveryHash!==sha256(code)) throw new HttpError(400,"invalid_recovery","用户名或恢复码不正确");
+      u.passwordHash=hashPassword(password);delete u.recoveryHash;u.loginFails=0;
+      db.sessions=db.sessions.filter(s=>s.userId!==u.id);
+      db.accessTokens=db.accessTokens.filter(t=>t.userId!==u.id);
+      db.oauthCodes=db.oauthCodes.filter(t=>t.userId!==u.id);
+    });
+    res.set("Cache-Control","no-store").json({ok:true});
+  }));
   app.get(
     "/v1/auth/captcha/challenge",
     asyncRoute(async (req, res) => {
@@ -252,6 +288,11 @@ function mount(app, ctx) {
       const db = ctx.get();
       const items = domain.activeEntitlements(db, user.id).map((item) => ({
         ...item,
+        replacementUrl: db.clients.find(c=>c.id===item.clientId)?.deliveryBlocked ? null : item.replacementUrl,
+        snapshot:db.clients.find(c=>c.id===item.clientId)?.deliveryBlocked && item.snapshot?.listing
+          ? {...item.snapshot,listing:{...item.snapshot.listing,delivery_url:null}} : item.snapshot,
+        delivery_status:db.clients.find(c=>c.id===item.clientId)?.deliveryBlocked ? "blocked" :
+          (db.deliveryReports || []).filter(r=>r.entitlementId===item.id).at(-1)?.status,
         app: domain.publicClient(db, db.clients.find((client) => client.id === item.clientId) || { id: item.clientId, name: "已下架", tags: [], status: "missing" }),
       }));
       res.set("Cache-Control","private, no-store").json({ items });

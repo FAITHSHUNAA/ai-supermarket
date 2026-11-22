@@ -8,7 +8,7 @@ const destinations = [
   ["/recharge","充值中心","M3 6h17v14H3z M3 6l13-4v4 M15 11h6v5h-6z"],
 ];
 
-export function Dock() {
+export function Dock({commercial=true}) {
   const dock = useRef(null);
   useEffect(() => {
     const nav = dock.current, links = [...nav.querySelectorAll("a")];
@@ -47,9 +47,9 @@ export function Dock() {
     nav.addEventListener("pointerleave",leave);
     fine.addEventListener("change",leave);
     return () => {cancelAnimationFrame(frame); nav.removeEventListener("pointermove",move); nav.removeEventListener("pointerleave",leave); fine.removeEventListener("change",leave);};
-  },[]);
+  },[commercial]);
   return <nav ref={dock} className="dock rail" aria-label="平台导航">
-    {destinations.map(([to,label,path]) => <NavLink end={to==="/"} key={to} to={to} aria-label={label}>
+    {destinations.filter(([to])=>commercial || ["/","/store"].includes(to)).map(([to,label,path]) => <NavLink end={to==="/"} key={to} to={to} aria-label={label}>
       <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round"><path d={path}/></svg>
       <span className="dock-caption">{label}</span><span className="dock-tip" aria-hidden="true">{label}</span>
     </NavLink>)}

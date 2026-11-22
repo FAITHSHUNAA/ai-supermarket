@@ -43,6 +43,7 @@ app.use((req, res, next) => {
   if (!req.path.startsWith("/v1")) return next();
   const started = Date.now();
   res.on("finish", () => {
+    if(live){console.info(JSON.stringify({method:req.method,path:req.path,status:res.statusCode,ms:Date.now()-started}));return;}
     store
       .mutate((db) => {
         pushCapped(
@@ -90,6 +91,7 @@ if (fs.existsSync(dist)) {
 }
 
 if (require.main === module) {
+  if(live) require("./settlement").start(store);
   if (live && process.env.REVIEW_SOCKET) require("./review").listen(store,process.env.REVIEW_SOCKET);
   const port = Number(process.env.PORT || 8787);
   app.listen(port, process.env.BIND_ADDRESS || "0.0.0.0", () => {

@@ -40,6 +40,7 @@ function jar() {
 }
 
 async function main() {
+  require("./settlement-check").check();
   const child = spawn(process.execPath, [path.join(__dirname, "index.js")], {
     env: { ...process.env, PORT: String(port), DATA_DIR: dataDir },
     stdio: ["ignore", "pipe", "pipe"],
@@ -241,7 +242,11 @@ async function main() {
     console.error(logs.slice(-4000));
     process.exitCode = 1;
   } finally {
-    child.kill();
+    if(child.exitCode===null && child.signalCode===null){
+      const closed=new Promise(resolve=>child.once("close",resolve));
+      child.kill();
+      await closed;
+    }
     fs.rmSync(dataDir, { recursive: true, force: true });
   }
 }

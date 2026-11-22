@@ -8,8 +8,37 @@ function listen(store, socket) {
   review.use(express.json({limit:"8kb"}));
   review.get("/pending", (req,res) => {
     const db = store.get();
-    res.json({sellers:db.users.filter(u => u.developerStatus === "pending").map(u => ({id:u.id,username:u.username,pitch:u.developerPitch})),
+    res.json({paymentDifferences:db.orders.filter(o=>o.reconciliationIssue).map(o=>domain.publicOrder(o)),refunds:db.refunds.filter(r=>!["approved","rejected"].includes(r.status)),deliveryReports:(db.deliveryReports || []).filter(r=>r.status==="pending"),sellers:db.users.filter(u => u.developerStatus === "pending").map(u => ({id:u.id,username:u.username,pitch:u.developerPitch})),
       offers:db.offers.filter(o => o.status === "pending").map(o => ({...o,app:db.clients.find(c => c.id === o.clientId)?.name}))});
+  });
+  review.post("/operations/:type/:id",async(req,res,next)=>{
+    try{
+      const {action,reason,url}=req.body, operator={id:"server-operator",roles:["admin"]};
+      if(!reason?.trim())return res.status(400).json({error:"请填写处理原因"});
+      await store.mutate(db=>{
+        const {type,id}=req.params;
+        if(type==="product"){
+          const c=db.clients.find(row=>row.id===id);
+          if(!c || !["pause","block","resume"].includes(action) || !db.offers.some(o=>o.clientId===id && o.status==="approved"))throw Error("商品或状态无效");
+          c.status=action==="resume"?"listed":"unlisted";c.deliveryBlocked=action==="block" || (action==="pause" && !!c.deliveryBlocked);
+        }else if(type==="delivery"){
+          const report=(db.deliveryReports||[]).find(r=>r.id===id && r.status==="pending");
+          if(!report || action!=="replace")throw Error("无待处理记录");
+          const link=new URL(url || report.proposedUrl);
+          if(link.protocol!=="https:" || link.username || link.password)throw Error("需要 HTTPS 交付地址");
+          const e=db.entitlements.find(e=>e.id===report.entitlementId && e.status==="active");
+          if(!e?.snapshot?.listing)throw Error("缺少有效的购买快照");
+          e.replacementUrl=link.href;report.status="replaced";
+        }else if(type==="refund"){
+          const r=db.refunds.find(r=>r.id===id);
+          if(action==="retry" && r?.status==="refund_failed") r.status="refund_requested";
+          else if(["approve","reject"].includes(action))domain.decideRefund(db,operator,id,action==="approve");
+          else throw Error("退款操作无效");
+        }else throw Error("未知操作");
+        domain.audit(db,operator,type+"."+action,id,reason);
+      });
+      res.json({ok:true});
+    }catch(err){next(err);}
   });
   review.post("/:kind/:id", async (req,res,next) => {
     try {

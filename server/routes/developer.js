@@ -3,6 +3,21 @@ const { asyncRoute } = require("../http");
 const { HttpError, page } = require("../lib");
 
 function mount(app, ctx) {
+  app.get("/v1/developer/delivery-reports",(req,res)=>{
+    const db=ctx.get(),user=domain.requireDeveloper(domain.resolveActor(db,req));
+    const mine=new Set(db.clients.filter(c=>c.ownerId===user.id).map(c=>c.id));
+    res.set("Cache-Control","no-store").json({items:(db.deliveryReports||[]).filter(r=>mine.has(r.clientId) && r.status==="pending").map(r=>({id:r.id,clientId:r.clientId,createdAt:r.createdAt,submitted:!!r.proposedUrl}))});
+  });
+  app.post("/v1/developer/delivery-reports",asyncRoute(async(req,res)=>{
+    await ctx.mutate(db=>{
+      const user=domain.requireDeveloper(domain.resolveActor(db,req));
+      const report=(db.deliveryReports||[]).find(r=>r.id===req.body.id && r.status==="pending" && db.clients.some(c=>c.id===r.clientId && c.ownerId===user.id));
+      if(!report)throw new HttpError(404,"report_missing","找不到待处理问题");
+      let link;try{link=new URL(req.body.url);}catch{throw new HttpError(400,"invalid_url","请输入 HTTPS 补发地址");}
+      if(link.protocol!=="https:" || link.username || link.password || link.href.length>2048)throw new HttpError(400,"invalid_url","补发地址无效");
+      report.proposedUrl=link.href;
+    });res.json({ok:true});
+  }));
   app.get("/v1/developer/application", (req, res) => {
     const user = domain.requireUser(domain.resolveActor(ctx.get(), req));
     res.json({ status: user.developerStatus, pitch: user.developerPitch || "", reason: user.developerReviewReason || "" });

@@ -12,6 +12,7 @@ WorkingDirectory=/opt/ai-supermarket/current
 Environment=NODE_ENV=production
 Environment=DATA_DIR=/var/lib/ai-supermarket-live
 Environment=MARKET_MODE=live
+Environment=MARKET_STORAGE=sqlite
 Environment=PUBLIC_ORIGIN=http://8.162.15.119
 EnvironmentFile=-/etc/ai-supermarket/merchant.env
 Environment=BIND_ADDRESS=127.0.0.1

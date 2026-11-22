@@ -550,6 +550,7 @@ function createOrder(db, user, fields) {
     userId: user.id,
     status: "pending",
     channel: fields.channel || "wechat",
+    checkoutStarted:false,
     createdAt: nowIso(),
     paidAt: null,
     ...fields,
@@ -585,15 +586,24 @@ function createAppOrder(db, user, body) {
   }
   const plan = currentPlan(db, user);
   if (plan.memberLevel < client.minMemberLevel) throw new HttpError(403, "membership_required", "会员等级不够");
+  const reservations = db.orders.filter(row => row.userId === user.id && row.kind === "app" && row.status === "pending");
+  const existing = reservations.find(row => row.clientId === client.id);
+  if (existing) {
+    if (existing.channel !== body.channel || existing.snapshot?.offerId !== offer.id) throw new HttpError(409,"pending_order","该商品有待付款订单，请先处理原订单：" + existing.outTradeNo);
+    return {status:"pending",order:publicOrder(existing),billing_url:"/pay/"+existing.outTradeNo};
+  }
+  if (activeEntitlements(db,user.id).length + reservations.length >= plan.maxAuthorizedApps) throw new HttpError(409,"app_limit_reached","可用名额已用完，待付款订单也占用名额");
   if (offer.pricePoints === 0 || body.channel === "points") {
     if (offer.pricePoints > 0) spendPoints(db, user.id, offer.pricePoints, `开通应用 ${client.name}`);
     const entitlement = grantEntitlement(db, user, client, "purchase", null, snapshot);
     const split = offer.pricePoints > 0 ? applySplit(db, user, client, offer.pricePoints) : null;
+    if (split) split.entitlementId=entitlement.id;
     event(db, user.id, "app_purchase", `开通了 ${client.name}`);
     return { status: "paid", entitlement, split, order: null };
   }
   const order = createOrder(db, user, {
     kind: "app",
+    expiresAt: new Date(Date.now()+30*60*1000).toISOString(),
     snapshot,
     title: `开通 ${client.name}`,
     clientId: client.id,
@@ -707,9 +717,16 @@ function confirmOrder(db, user, outTradeNo) {
     const plan = must(db.plans.find((item) => item.id === order.planId), 500, "plan_missing", "方案缺失");
     activatePlan(db, payer, plan, order.id);
   } else if (order.kind === "app") {
-    const client = must(db.clients.find((item) => item.id === order.clientId), 404, "app_not_found", "应用不存在");
-    grantEntitlement(db, payer, client, "cash", order.id, order.snapshot);
-    applySplit(db, payer, client, order.points);
+    const client = db.clients.find((item) => item.id === order.clientId);
+    const alreadyOwned=activeEntitlements(db,payer.id).some(e=>e.clientId===client.id);
+    if (alreadyOwned || client?.status !== "listed" || activeEntitlements(db,payer.id).length >= currentPlan(db,payer).maxAuthorizedApps || currentPlan(db,payer).memberLevel < client.minMemberLevel) {
+      order.status="paid_unfulfilled";
+      if(!db.refunds.some(r=>r.orderId===order.id)) db.refunds.push({id:id("rfd"),orderId:order.id,userId:payer.id,clientId:order.clientId,status:"pending",reason:"已收款但无法交付，请原路退款",createdAt:nowIso()});
+    } else {
+      const entitlement=grantEntitlement(db, payer, client, "cash", order.id, order.snapshot);
+      const split=applySplit(db, payer, client, order.points);
+      if(split) split.entitlementId=entitlement.id;
+    }
   }
   event(db, payer.id, "payment", `支付成功：${order.title}`);
   return publicOrder(order);
@@ -722,10 +739,11 @@ function requestRefund(db, user, body) {
     "entitlement_not_found",
     "找不到可退的开通记录"
   );
-  const existing = db.refunds.find((item) => item.entitlementId === entitlement.id && item.status === "pending");
+  const existing = db.refunds.find((item) => item.entitlementId === entitlement.id && !["approved","rejected"].includes(item.status));
   if (existing) throw new HttpError(409, "refund_pending", "已有进行中的售后");
   const refund = {
     id: id("rfd"),
+    orderId:entitlement.orderId || null,
     entitlementId: entitlement.id,
     userId: user.id,
     clientId: entitlement.clientId,
@@ -740,19 +758,32 @@ function requestRefund(db, user, body) {
 function decideRefund(db, admin, refundId, approve) {
   const refund = must(db.refunds.find((item) => item.id === refundId), 404, "refund_not_found", "找不到售后单");
   if (refund.status !== "pending") throw new HttpError(409, "refund_closed", "售后已处理");
-  const entitlement = must(db.entitlements.find((item) => item.id === refund.entitlementId), 404, "entitlement_not_found", "开通记录不存在");
   if (!approve) {
     refund.status = "rejected";
     audit(db, admin, "refund.reject", refund.id, refund.reason);
     return refund;
   }
-  refund.status = "approved";
-  entitlement.status = "revoked";
-  const purchase = [...db.purchases].reverse().find((item) => item.payerId === entitlement.userId && item.clientId === entitlement.clientId);
+  const entitlement=db.entitlements.find(item=>item.id===refund.entitlementId);
+  const order=db.orders.find(item=>item.id===(refund.orderId || entitlement?.orderId));
+  if(db.production && order){
+    refund.orderId=order.id;
+    refund.status="refund_requested";
+    audit(db,admin,"refund.requested",refund.id,order.outTradeNo);
+    return refund;
+  }
+  return finishRefund(db,admin,refund,false);
+}
+function finishRefund(db,admin,refund,cash){
+  if(refund.status==="approved") return refund;
+  const entitlement=db.entitlements.find(item=>item.id===refund.entitlementId);
+  refund.status="approved";
+  if(entitlement) entitlement.status="revoked";
+  const purchase = entitlement && (db.purchases.find(item=>item.entitlementId===entitlement.id) || [...db.purchases].reverse().find(item=>!item.entitlementId && item.payerId===entitlement.userId && item.clientId===entitlement.clientId));
   if (purchase) {
-    addPoints(db, entitlement.userId, purchase.points, "应用售后退回积分", "refund");
+    if(!cash) addPoints(db, entitlement.userId, purchase.points, "应用售后退回积分", "refund");
     const owner = walletOf(db, purchase.developerId);
-    owner.commissionCents = Math.max(0, owner.commissionCents - purchase.developerCents);
+    owner.commissionCents -= purchase.developerCents;
+    if(purchase.promoterId) walletOf(db,purchase.promoterId).commissionCents-=purchase.promoterCents;
   }
   audit(db, admin, "refund.approve", refund.id, "");
   return refund;
@@ -1231,6 +1262,7 @@ function revenueReport(db) {
 }
 
 module.exports = {
+  finishRefund,
   publicUser,
   publicPlan,
   publicModel,

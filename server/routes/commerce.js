@@ -8,6 +8,11 @@ function mount(app, ctx) {
     const db = ctx.get(), user = domain.requireUser(domain.resolveActor(db,req));
     const order = db.orders.find(row => row.outTradeNo === req.params.id && row.userId === user.id);
     if (!db.production || !order || order.status !== "pending") return res.sendStatus(409);
+    await ctx.mutate(db=>{
+      const fresh=db.orders.find(row=>row.id===order.id);
+      if(fresh.status!=="pending" || Date.parse(fresh.expiresAt)<=Date.now()) throw new HttpError(409,"order_expired","订单已过期");
+      fresh.checkoutStarted=true;
+    });
     const qr = await require("qrcode").toDataURL(await merchant.checkout(order));
     res.json({qr});
   }));
@@ -16,12 +21,7 @@ function mount(app, ctx) {
     const channel = req.params.channel;
     const tx = merchant.notification(channel,req);
     await ctx.mutate(db => {
-      const order = db.orders.find(row => row.outTradeNo === tx.order);
-      merchant.requireValid(order && order.channel === channel && Number.isSafeInteger(tx.cents) && tx.cents > 0 && order.amountCents === tx.cents && typeof tx.transaction === "string" && tx.transaction.length > 0);
-      merchant.requireValid(!db.orders.some(other => other !== order && other.channel === channel && other.providerTransaction === tx.transaction));
-      merchant.requireValid(order.status !== "paid" || order.providerTransaction === tx.transaction);
-      domain.confirmOrder(db,null,tx.order);
-      order.providerTransaction = tx.transaction;
+      require("../settlement").settle(db,channel,tx);
     });
     if (channel === "alipay") res.type("text").send("success"); else res.sendStatus(204);
   }));

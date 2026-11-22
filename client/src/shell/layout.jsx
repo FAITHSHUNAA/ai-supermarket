@@ -20,7 +20,7 @@ export function Layout() {
           <img src="/favicon.svg" alt="" />
           <span>
             <strong>{brand}</strong>
-            <small>AI MARKET</small>
+            <small className="brand-signature">MUCHUAN</small>
           </span>
         </Link>
         <Dock commercial={settings?.capabilities?.recharge !== false}/>
@@ -44,7 +44,7 @@ export function Layout() {
       </main>
       <footer className="footer">
         <div>
-          <strong>{brand}</strong>
+          <strong>沐川 · {brand}</strong>
           <p>{settings?.description || "发现 AI 应用、调用模型，一站管理会员与积分。"}</p>
           <p className="faint">{settings?.filing_text}</p>
         </div>

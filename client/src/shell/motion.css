@@ -6,6 +6,7 @@
   --glass-radius:24px; --faint:#a39eaf; --muted:#c5c1d1;
 }
 html {scrollbar-gutter:stable}
+.brand .brand-signature {color:#c6b9df;letter-spacing:.18em;font-weight:600}
 :focus-visible {outline:2px solid #cfbaff;outline-offset:4px}
 .skip:focus {z-index:60}
 .nav {top:12px;background:var(--glass);border-color:var(--edge);box-shadow:var(--raised);backdrop-filter:blur(18px);transition:box-shadow var(--normal),background var(--normal)}

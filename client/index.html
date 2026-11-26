@@ -3,12 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>沐川 AI 超市 · MUCHUAN</title>
-    <meta name="description" content="沐川 AI 超市汇集网页应用、API 服务与数字资源，提供商品浏览和卖家入驻入口。" />
+    <title>沐川 AI 手记 · 开源工具与学习资料</title>
+    <meta name="description" content="沐川的个人 AI 学习目录，整理开放教材、开源项目与官方使用文档。" />
+    <link rel="stylesheet" href="/src/personal.css" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    <header><a class="brand" href="/"><img src="/favicon.svg" width="32" height="32" alt=""> 沐川 <small>MUCHUAN</small></a><nav aria-label="主导航"><a href="#resources">资料目录</a><a href="#about">关于本站</a></nav></header>
+    <main>
+      <section class="cover"><div><h1>沐川 AI 手记</h1><p>从第一本开放教材，到自己运行一个模型。这里整理我学习 AI 时值得翻阅的资料。</p><a class="action" href="#resources">浏览学习资料 ↓</a></div><img src="/muchuan-glass.webp" width="960" height="640" alt=""></section>
+      <section id="resources"><h2>学习资料</h2><div class="grid">
+        <article><small>中文教材</small><h3><a href="https://zh.d2l.ai/">动手学深度学习 ↗</a></h3><p>从线性回归入门，跟着中文教材阅读推导、运行示例，再逐步学习神经网络。</p></article>
+        <article><small>模型开发</small><h3><a href="https://pytorch.org/tutorials/">PyTorch 官方教程 ↗</a></h3><p>从张量和数据加载开始，按步骤完成模型训练、保存与推理。教程主要使用英文。</p></article>
+        <article><small>本地推理</small><h3><a href="https://github.com/ggml-org/llama.cpp">llama.cpp ↗</a></h3><p>查阅开源项目的安装说明，了解如何选择 GGUF 模型并在自己的电脑上运行。</p></article>
+      </div></section>
+      <section id="about"><h2>关于本站</h2><p>沐川 AI 手记是个人维护的学习资料目录，所有站内内容均可免费阅读，无需注册。资料链接通往原作者或项目官网，使用代码、教材和模型时请分别查阅原项目的许可说明。</p></section>
+    </main><footer>沐川 · MUCHUAN</footer>
   </body>
 </html>

@@ -19,4 +19,15 @@ article { padding: 22px; border: 1px solid #354549; border-radius: 18px; backgro
 h3 { margin: 8px 0; }
 #about, footer { padding: 28px 0; }
 footer { border-top: 1px solid #334044; }
+.lab { display:grid; grid-template-columns:1fr 1fr; gap:clamp(24px,5vw,65px); padding:clamp(20px,4vw,48px); background:#131d20; border:1px solid #354549; border-radius:24px; margin:20px 0 48px; scroll-margin-top:1rem; }
+.lab svg,.lab input,.lab textarea,.lab table { width:100%; }
+.lab table { border-collapse:collapse; text-align:left; font-variant-numeric:tabular-nums; }
+.lab caption { text-align:left; color:#b4c8c4; margin:12px 0; }
+.lab td,.lab th { border-bottom:1px solid #354549; padding:4px; }
+.lab label { display:block; margin:12px 0 6px; font-weight:650; }
+.lab textarea { min-height:80px; resize:vertical; border:1px solid #556b70; border-radius:8px; background:#0b1113; padding:10px; color:inherit; font:inherit; }
+.lab input { accent-color:#abeee0; min-height:32px; }
+.lab a,.lab output { color:#abeee0; }
+.lab summary { cursor:pointer; }
+@media(max-width:700px){.lab{grid-template-columns:1fr}.lab svg{max-height:180px}}
 @media(max-width:700px) { .grid, .cover { grid-template-columns: 1fr; } .cover img { max-height: 190px; object-fit: contain; } .brand small { display: none; } }

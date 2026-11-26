@@ -7,17 +7,27 @@
     <meta name="description" content="沐川的个人 AI 学习目录，整理开放教材、开源项目与官方使用文档。" />
     <link rel="stylesheet" href="/src/personal.css" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="canonical" href="https://muchuanxiaodian.xyz/">
+    <meta property="og:title" content="沐川 AI 手记 · 第一堂模型实验">
+    <meta property="og:description" content="移动一条直线，观察预测误差，完成你的第一次模型拟合。">
+    <meta property="og:image" content="https://muchuanxiaodian.xyz/muchuan-glass.webp">
   </head>
   <body>
     <header><a class="brand" href="/"><img src="/favicon.svg" width="32" height="32" alt=""> 沐川 <small>MUCHUAN</small></a><nav aria-label="主导航"><a href="#resources">资料目录</a><a href="#about">关于本站</a></nav></header>
     <main>
-      <section class="cover"><div><h1>沐川 AI 手记</h1><p>从第一本开放教材，到自己运行一个模型。这里整理我学习 AI 时值得翻阅的资料。</p><a class="action" href="#resources">浏览学习资料 ↓</a></div><img src="/muchuan-glass.webp" width="960" height="640" alt=""></section>
+      <section class="cover"><div><small>沐川 AI 手记 · 入门实验</small><h1>亲手调一条<br>预测线。</h1><p>三个观测点，一个可以调节的模型。试着让预测贴近数据，再用自己的话解释误差。</p><a class="action" href="#lab">开始实验 ↓</a></div><img src="/muchuan-glass.webp" width="960" height="640" alt=""></section>
+      <section class="lab" id="lab"><div><small>线性回归</small><h2>让预测贴近观测值</h2><p>练习数据为 (1, 3)、(2, 5)、(3, 7)。固定截距为 1，预测值等于斜率 × 输入值 + 1。你能找到让三个点都落在线上的斜率吗？</p>
+      <svg viewBox="0 0 320 200" role="img" aria-label="预测直线与三个观测点，具体数值见下表"><defs><clipPath id="plot"><rect x="30" y="10" width="265" height="166"/></clipPath></defs><path d="M30 15V176H296 M30 128H296 M30 80H296 M30 32H296" fill="none" stroke="#36474a"/><g clip-path="url(#plot)"><line id="line" x1="30" y1="160" x2="294" y2="160" stroke="#abeee0" stroke-width="3"/></g><g fill="#ffcf94"><circle cx="110" cy="128" r="5"/><circle cx="190" cy="96" r="5"/><circle cx="270" cy="64" r="5"/></g></svg></div>
+      <div><label for="slope">预测线斜率 <output id="value">0</output></label><input id="slope" type="range" min="0" max="4" step="0.25" value="0"><table><caption>模型预测与实际观测</caption><thead><tr><th>输入</th><th>观测值</th><th>预测值</th></tr></thead><tbody><tr><td>1</td><td>3</td><td data-x="1">1</td></tr><tr><td>2</td><td>5</td><td data-x="2">1</td></tr><tr><td>3</td><td>7</td><td data-x="3">1</td></tr></tbody></table><p id="result" role="status"></p>
+      <details><summary>如何计算平均绝对误差？</summary><p>逐个求预测值与观测值的差，取绝对值，再把三项相加除以 3。试试两个不同的斜率，比较结果。</p></details>
+      <label for="note">我的实验笔记</label><textarea id="note" maxlength="1500" placeholder="斜率增加时，哪个点的预测变化最大？"></textarea><small id="saved">进度和笔记仅保存在此浏览器。</small>
+      <p><a id="share" href="/?from=share&amp;slope=0#lab">分享当前预测线</a></p><span id="share-status" role="status"></span><noscript>请启用 JavaScript 调节预测线。下方学习资料可直接阅读。</noscript></div></section>
       <section id="resources"><h2>学习资料</h2><div class="grid">
         <article><small>中文教材</small><h3><a href="https://zh.d2l.ai/">动手学深度学习 ↗</a></h3><p>从线性回归入门，跟着中文教材阅读推导、运行示例，再逐步学习神经网络。</p></article>
         <article><small>模型开发</small><h3><a href="https://pytorch.org/tutorials/">PyTorch 官方教程 ↗</a></h3><p>从张量和数据加载开始，按步骤完成模型训练、保存与推理。教程主要使用英文。</p></article>
         <article><small>本地推理</small><h3><a href="https://github.com/ggml-org/llama.cpp">llama.cpp ↗</a></h3><p>查阅开源项目的安装说明，了解如何选择 GGUF 模型并在自己的电脑上运行。</p></article>
       </div></section>
       <section id="about"><h2>关于本站</h2><p>沐川 AI 手记是个人维护的学习资料目录，所有站内内容均可免费阅读，无需注册。资料链接通往原作者或项目官网，使用代码、教材和模型时请分别查阅原项目的许可说明。</p></section>
-    </main><footer>沐川 · MUCHUAN</footer>
+    </main><footer>沐川 · MUCHUAN</footer><script type="module" src="/src/lab.js"></script>
   </body>
 </html>

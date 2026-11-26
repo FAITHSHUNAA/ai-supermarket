@@ -1,10 +1,6 @@
 services:
   - type: web
-    name: ai-supermarket
-    runtime: node
+    name: muchuan-notes
+    runtime: static
     buildCommand: npm ci --include=dev && npm run build
-    healthCheckPath: /v1/health
-    startCommand: node server/index.js
-    envVars:
-      - key: NODE_VERSION
-        value: "22"
+    staticPublishPath: client/dist

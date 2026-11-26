@@ -1,9 +1,8 @@
-FROM node:22-alpine
+FROM node:22-alpine AS build
 WORKDIR /app
-COPY package.json package-lock.json ./
+COPY package*.json ./
 RUN npm ci
-COPY . .
+COPY client ./client
 RUN npm run build
-ENV PORT=8787
-EXPOSE 8787
-CMD ["node", "server/index.js"]
+FROM nginx:alpine
+COPY --from=build /app/client/dist/ /usr/share/nginx/html/

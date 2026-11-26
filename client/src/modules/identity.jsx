@@ -205,7 +205,6 @@ function Wallet() {
           ))}
         </tbody>
       </table>
-      {settings?.capabilities?.recharge!==false && <p><Link to="/recharge">去充值</Link></p>}
     </article>
   );
 }

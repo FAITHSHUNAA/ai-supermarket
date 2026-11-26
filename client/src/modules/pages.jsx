@@ -73,7 +73,7 @@ export function About() {
       <p className="lede">这是一个按模块搭起来的 AI 超市：应用货架、模型调用、会员积分、开发者入驻和管理后台。支付、短信和上游模型在没有配置密钥时走演示，规则和正式流程一致。</p>
       <div className="grid-3">
         <article className="quote"><h3>身份</h3><p className="muted">注册、验证码、密码、会话和 OAuth。</p></article>
-        <article className="quote"><h3>交易</h3><p className="muted">充值、会员、应用购买、预扣和售后。</p></article>
+        <article className="quote"><h3>交易</h3><p className="muted">会员、应用购买、预扣和售后。</p></article>
         <article className="quote"><h3>开发者</h3><p className="muted">钥匙、沙箱、托管、佣金和线下结算。</p></article>
       </div>
     </section>

@@ -5,7 +5,7 @@ import { Layout } from "./shell/layout";
 import { SessionProvider } from "./shell/session";
 import { Home } from "./modules/home";
 import { AppDetail, Store } from "./modules/store";
-import { Membership, Pay, Recharge } from "./modules/billing";
+import { Membership, Pay } from "./modules/billing";
 import { Login, Profile } from "./modules/identity";
 import { Recovery } from "./modules/recovery";
 import { Developer, DeveloperApply } from "./modules/developer";
@@ -26,7 +26,6 @@ export function App() {
           <Route path="store" element={<Store />} />
           <Route path="store/:id" element={<AppDetail />} />
           <Route path="membership" element={<Membership />} />
-          <Route path="recharge" element={<Recharge />} />
           <Route path="pay/:outTradeNo" element={<Pay />} />
           <Route path="login" element={<Login />} />
           <Route path="recovery" element={<Recovery />} />

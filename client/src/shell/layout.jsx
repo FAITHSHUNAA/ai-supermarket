@@ -7,7 +7,7 @@ import { useSession } from "./session";
 export function Layout() {
   const { user, settings, catalogOnly } = useSession();
   const { pathname } = useLocation();
-  const publicPage = /^\/(?:$|store(?:\/|$)|docs(?:\/|$)|legal\/|about$|design$|membership$|recharge$)/.test(pathname);
+  const publicPage = /^\/(?:$|store(?:\/|$)|docs(?:\/|$)|legal\/|about$|design$|membership$)/.test(pathname);
   useSurfaceMotion(pathname);
   const brand = settings?.brand_name || "AI 超市";
   return (
@@ -23,7 +23,7 @@ export function Layout() {
             <small className="brand-signature">MUCHUAN</small>
           </span>
         </Link>
-        <Dock commercial={settings?.capabilities?.recharge !== false}/>
+        <Dock commercial={settings?.capabilities?.membership !== false}/>
         <div className="nav-side">
           <NavLink to="/register-developer">开发者中心</NavLink>
           {user ? (
@@ -52,7 +52,6 @@ export function Layout() {
           <h2>产品服务</h2>
           <ul>
             <li><Link to="/store">应用商店</Link></li>
-            {settings?.capabilities?.recharge !== false && <li><Link to="/recharge">充值中心</Link></li>}
             {settings?.capabilities?.membership !== false && <li><Link to="/membership">订阅服务</Link></li>}
             <li><Link to="/profile">个人中心</Link></li>
           </ul>

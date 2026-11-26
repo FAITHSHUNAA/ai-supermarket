@@ -13,7 +13,7 @@ function mount(app, ctx) {
     const settings = ctx.get().settings;
     res.json({
       brand_name: settings.brandName,
-      capabilities:ctx.get().production ? {recharge:false,membership:false,admin:false,developer_tabs:["clients","wallet"],profile_tabs:["","wallet","billing","usage"]} : null,
+      capabilities:ctx.get().production ? {membership:false,admin:false,developer_tabs:["clients","wallet"],profile_tabs:["","wallet","billing","usage"]} : null,
       tagline: settings.tagline,
       description: settings.description,
       keywords: settings.keywords,
@@ -45,19 +45,6 @@ function mount(app, ctx) {
 
   app.get("/v1/platform/membership-plans", (req, res) => {
     res.json({ items: ctx.get().plans.filter((item) => item.active).map(domain.publicPlan) });
-  });
-
-  app.get("/v1/platform/recharge-packages", (req, res) => {
-    res.json({
-      items: ctx.get().packages.filter((item) => item.active).map((item) => ({
-        id: item.id,
-        name: item.name,
-        description: item.description,
-        cny_cents: String(item.cnyCents),
-        points: String(item.points),
-        display_order: item.displayOrder,
-      })),
-    });
   });
 
   app.get("/v1/platform/payment-channels", (req, res) => {
@@ -243,7 +230,6 @@ function openapiPaths() {
     ["get", "/v1/platform/models/pricing"],
     ["get", "/v1/platform/apps"],
     ["get", "/v1/platform/membership-plans"],
-    ["get", "/v1/platform/recharge-packages"],
     ["post", "/v1/auth/register"],
     ["post", "/v1/auth/login"],
     ["post", "/v1/auth/login/otp"],
@@ -256,7 +242,6 @@ function openapiPaths() {
     ["post", "/v1/points/reserve"],
     ["post", "/v1/points/confirm"],
     ["post", "/v1/points/release"],
-    ["post", "/v1/payments/recharge"],
     ["post", "/v1/oauth/token"],
     ["get", "/v1/oauth/userinfo"],
     ["get", "/v1/developer/api-keys"],

@@ -81,8 +81,6 @@ function snapshot(db) {
       provider_id: model.providerId,
     })),
     plans: db.plans,
-    packages: db.packages,
-    coupons: db.coupons,
     keywords: db.keywords,
     settlements: db.settlements,
     statements: db.statements,
@@ -126,8 +124,6 @@ function runAction(db, admin, body) {
   if (type === "category.save") return saveCategory(db, admin, body);
   if (type === "model.save") return saveModel(db, admin, body);
   if (type === "plan.save") return saveRow(db, admin, "plans", body, ["name", "description", "priceCents", "monthlyPoints", "maxAuthorizedApps", "memberLevel", "active", "benefits"]);
-  if (type === "package.save") return saveRow(db, admin, "packages", body, ["name", "description", "cnyCents", "points", "active", "displayOrder"]);
-  if (type === "coupon.save") return saveRow(db, admin, "coupons", body, ["code", "name", "bonusPoints", "active", "maxUses"]);
   if (type === "keyword.save") return saveRow(db, admin, "keywords", body, ["word", "enabled", "note"]);
   if (type === "settings.save") return saveSettings(db, admin, body.patch || {});
   if (type === "legal.save") return saveLegal(db, admin, body);

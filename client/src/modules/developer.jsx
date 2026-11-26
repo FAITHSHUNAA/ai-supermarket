@@ -371,7 +371,6 @@ function DevWallet() {
         <div className="stat"><span className="muted">积分，只用于调用</span><b>{wallet?.points ?? "—"}</b></div>
         <div className="stat"><span className="muted">佣金，只走结算</span><b>{yuan(wallet?.commission_cents || 0)}</b></div>
       </div>
-      {settings?.capabilities?.recharge!==false && <p><Link to="/recharge">给积分账户充值</Link></p>}
     </article>
   );
 }

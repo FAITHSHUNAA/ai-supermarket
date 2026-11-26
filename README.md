@@ -2,7 +2,7 @@
 
 一个账号逛应用、选模型、用积分。项目按模块拆开，方便以后单独改某一块。
 
-界面和流程参考公开站点 [aigzm.com](https://aigzm.com/) 的访客能看到的能力：应用货架、模型价格、会员、充值、个人中心、开发者入驻、控制台、接入文档和管理后台。文案、图标、法律文本和示例数据都是这个仓库自己的，不包含对方的源码、商标或公司文书。
+界面和流程参考公开站点 [aigzm.com](https://aigzm.com/) 的访客能看到的能力：应用货架、模型价格、会员、个人中心、开发者入驻、控制台、接入文档和管理后台。文案、图标、法律文本和示例数据都是这个仓库自己的，不包含对方的源码、商标或公司文书。
 
 ## 模块
 
@@ -11,7 +11,7 @@
 | 内核 | `server/lib.js` `server/seed.js` `server/domain.js` | 账号、积分预扣/确认/释放、订单、分成 |
 | 身份 | `server/routes/auth.js` `client/src/modules/identity.jsx` | 注册、验证码、密码、会话、安全、邀请 |
 | 货架 | `server/routes/platform.js` `client/src/modules/store.jsx` | 分类、应用、模型目录、公开设置 |
-| 交易 | `server/routes/commerce.js` `client/src/modules/billing.jsx` | 充值、会员、购买、售后、收银台 |
+| 交易 | `server/routes/commerce.js` `client/src/modules/billing.jsx` | 会员、购买、售后、收银台 |
 | 模型 | `server/routes/models.js` | 对话、向量、图片、听写，OpenAI 风格入口 |
 | 数据接口 | `server/routes/dataApi.js` | 演示数据网关，成功扣积分，失败不落账 |
 | 开发者 | `server/routes/developer.js` `client/src/modules/developer.jsx` | 入驻、钥匙、应用、沙箱、托管、佣金 |
@@ -41,7 +41,7 @@ npm start
 npm test
 ```
 
-会另开一个临时数据库，把注册、充值、购买、钥匙、预扣、数据接口、OAuth 和管理员审核走一遍。
+会另开一个临时数据库，把注册、购买、钥匙、预扣、数据接口、OAuth 和管理员审核走一遍。
 
 ## 演示账号
 

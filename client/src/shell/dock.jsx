@@ -5,7 +5,6 @@ const destinations = [
   ["/","首页","M3 10.5 12 3l9 7.5V21h-6v-7H9v7H3z"],
   ["/store","AI 超市","M3 9l2-6h14l2 6v3H3z M5 12v9h14v-9 M9 21v-6h6v6"],
   ["/membership","会员中心","M3 5h18v14H3z M7 9h4 M7 14h8"],
-  ["/recharge","充值中心","M3 6h17v14H3z M3 6l13-4v4 M15 11h6v5h-6z"],
 ];
 
 export function Dock({commercial=true}) {

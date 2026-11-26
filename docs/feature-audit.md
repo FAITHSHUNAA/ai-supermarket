@@ -72,7 +72,6 @@
 | POST | `/v1/points/reserve` | 匹配 |
 | POST | `/v1/points/confirm` | 匹配 |
 | POST | `/v1/points/release` | 匹配 |
-| POST | `/v1/payments/recharge` | 匹配 |
 | GET | `/v1/.well-known/jwks.json` | 匹配 |
 | GET | `/v1/admin/developer-api-keys` | 未匹配 |
 | POST | `/v1/admin/developer-api-keys/{id}/revoke` | 未匹配 |

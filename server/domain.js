@@ -559,17 +559,6 @@ function createOrder(db, user, fields) {
   return order;
 }
 
-function couponBonus(db, code, user) {
-  if (!code) return 0;
-  const coupon = db.coupons.find((item) => item.code.toLowerCase() === String(code).trim().toLowerCase() && item.active);
-  if (!coupon) throw new HttpError(404, "coupon_not_found", "优惠券不存在");
-  if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) throw new HttpError(409, "coupon_exhausted", "优惠券已用完");
-  if (db.orders.some((item) => item.userId === user.id && item.couponCode === coupon.code && item.status === "paid")) {
-    throw new HttpError(409, "coupon_used", "你已经用过这张券");
-  }
-  return coupon;
-}
-
 function createAppOrder(db, user, body) {
   const client = must(
     db.clients.find((item) => item.id === body.client_id && item.status === "listed"),
@@ -612,33 +601,6 @@ function createAppOrder(db, user, body) {
     channel: body.channel || "wechat",
   });
   return { status: "pending", order: publicOrder(order), billing_url: `/pay/${order.outTradeNo}` };
-}
-
-function createRechargeOrder(db, user, body) {
-  if (body.package_id) {
-    const pack = must(db.packages.find((item) => item.id === body.package_id && item.active), 404, "package_not_found", "找不到充值套餐");
-    const coupon = couponBonus(db, body.coupon_code, user);
-    const order = createOrder(db, user, {
-      kind: "recharge",
-      title: pack.name,
-      packageId: pack.id,
-      points: pack.points + (coupon ? coupon.bonusPoints : 0),
-      amountCents: pack.cnyCents,
-      couponCode: coupon ? coupon.code : null,
-      channel: body.channel || "wechat",
-    });
-    return publicOrder(order);
-  }
-  const cents = Number(body.cny_cents || body.amount_cents);
-  if (!Number.isInteger(cents) || cents < 100) throw new HttpError(400, "invalid_amount", "自定义充值至少 1 元");
-  const order = createOrder(db, user, {
-    kind: "recharge",
-    title: "自定义充值",
-    points: Math.round((cents / 100) * activeRate(db)),
-    amountCents: cents,
-    channel: body.channel || "wechat",
-  });
-  return publicOrder(order);
 }
 
 function createMembershipOrder(db, user, body) {
@@ -704,16 +666,11 @@ function confirmOrder(db, user, outTradeNo) {
   if (user && order.userId !== user.id && !user.roles.includes("admin")) throw new HttpError(403, "forbidden", "不能支付别人的订单");
   if (order.status === "paid") return publicOrder(order);
   if (order.status !== "pending") throw new HttpError(409, "order_closed", "订单已关闭");
+  if (!["membership", "app"].includes(order.kind)) throw new HttpError(410, "order_retired", "此类订单已停止处理");
   const payer = must(findUser(db, order.userId), 404, "user_not_found", "用户不存在");
   order.status = "paid";
   order.paidAt = nowIso();
-  if (order.couponCode) {
-    const coupon = db.coupons.find((item) => item.code === order.couponCode);
-    if (coupon) coupon.usedCount += 1;
-  }
-  if (order.kind === "recharge") {
-    addPoints(db, payer.id, order.points, order.title, "recharge");
-  } else if (order.kind === "membership") {
+  if (order.kind === "membership") {
     const plan = must(db.plans.find((item) => item.id === order.planId), 500, "plan_missing", "方案缺失");
     activatePlan(db, payer, plan, order.id);
   } else if (order.kind === "app") {
@@ -1301,7 +1258,6 @@ module.exports = {
   listedClients,
   activeEntitlements,
   createAppOrder,
-  createRechargeOrder,
   createMembershipOrder,
   downgrade,
   confirmOrder,

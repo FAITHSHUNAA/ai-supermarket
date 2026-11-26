@@ -104,12 +104,6 @@ function seed() {
     model("stall-asr", "听写档", "语音", "asr", "per_call", 10, "接收音频并返回演示转写。"),
   ];
 
-  const packages = [
-    pack("pkg_10", "10 元体验包", "适合先试一轮对话。", 1000, 1000, 0),
-    pack("pkg_30", "30 元常用包", "充 3000 积分，另送 300。", 3000, 3300, 1),
-    pack("pkg_68", "68 元创作包", "充 6800 积分，另送 1000。", 6800, 7800, 2),
-    pack("pkg_128", "128 元工作室包", "充 12800 积分，另送 2800。", 12800, 15600, 3),
-  ];
 
   const suppliers = [
     { id: "sup_feed", slug: "demo-feed", name: "热榜演示源", summary: "返回站内编写的热榜样例，不连接外部平台。" },
@@ -194,18 +188,6 @@ function seed() {
     plans,
     memberships: [
       { id: "mem_lin", userId, planId: "plan_silver", status: "active", startedAt: t, periodStart: t },
-    ],
-    packages,
-    coupons: [
-      {
-        id: "cpn_welcome",
-        code: "WELCOME100",
-        name: "新客加赠 100 积分",
-        bonusPoints: 100,
-        active: true,
-        usedCount: 1,
-        maxUses: 1000,
-      },
     ],
     orders: [],
     categories,
@@ -407,10 +389,6 @@ function model(key, displayName, shelf, category, billingUnit, points, descripti
     enabled: true,
     timeoutSeconds: category === "image" ? 60 : 30,
   };
-}
-
-function pack(idValue, name, description, cnyCents, points, displayOrder) {
-  return { id: idValue, name, description, cnyCents, points, displayOrder, active: true };
 }
 
 function endpoint(supplierSlug, key, name, method, path, points, kind) {

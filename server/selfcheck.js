@@ -93,17 +93,6 @@ async function main() {
     const userApi = jar();
     const login = await userApi("/v1/auth/login", { method: "POST", body: { phone: "13800000002", password: "User#123456" } });
     assert(login.status === 200, `login ${login.text}`);
-    const before = await userApi("/v1/user/wallet");
-    const recharge = await userApi("/v1/auth/payments/recharge-package", {
-      method: "POST",
-      body: { package_id: "pkg_10", channel: "wechat", coupon_code: "WELCOME100" },
-    });
-    assert(recharge.status === 200, `recharge ${recharge.text}`);
-    const paid = await userApi(`/v1/payments/orders/${recharge.json.order.out_trade_no}/confirm`, { method: "POST", body: {} });
-    assert(paid.json.order.status === "paid", "paid");
-    const after = await userApi("/v1/user/wallet");
-    assert(after.json.wallet.points === before.json.wallet.points + 1100, `points ${before.json.wallet.points} -> ${after.json.wallet.points}`);
-
     const purchase = await userApi("/v1/auth/app-purchases/orders", { method: "POST", body: { client_id: "app_trans", channel: "points" } });
     assert(purchase.json.status === "paid", `purchase ${purchase.text}`);
 

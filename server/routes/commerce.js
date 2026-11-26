@@ -125,30 +125,6 @@ function mount(app, ctx) {
   );
 
   app.post(
-    "/v1/payments/recharge",
-    asyncRoute(async (req, res) => {
-      const order = await ctx.mutate((db) => {
-        const user = domain.requireUser(domain.resolveActor(db, req));
-        return domain.createRechargeOrder(db, user, req.body || {});
-      });
-      res.json(order);
-    })
-  );
-
-  app.post("/v1/auth/payments/recharge", (req, res, next) => app.handle({ ...req, url: "/v1/payments/recharge", originalUrl: "/v1/payments/recharge" }, res, next));
-
-  app.post(
-    "/v1/auth/payments/recharge-package",
-    asyncRoute(async (req, res) => {
-      const order = await ctx.mutate((db) => {
-        const user = domain.requireUser(domain.resolveActor(db, req));
-        return domain.createRechargeOrder(db, user, req.body || {});
-      });
-      res.json({ order, billing_url: order.billing_url });
-    })
-  );
-
-  app.post(
     "/v1/auth/membership/orders",
     asyncRoute(async (req, res) => {
       const result = await ctx.mutate((db) => {

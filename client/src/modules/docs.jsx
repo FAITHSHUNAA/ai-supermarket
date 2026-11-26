@@ -16,7 +16,6 @@ export function Docs({compact=false}) {
         <Link to="/docs/models/pricing">模型价格</Link>
         <Link to="/docs/api">数据 API</Link>
         <Link to="/docs/listing">商品上架规范</Link>
-        <Link to="/docs/billing/recharge">积分充值</Link>
         <Link to="/docs/billing/membership">会员升级</Link>
         <a href="/llms.txt">llms.txt</a>
         <a href="/openapi.json">OpenAPI</a>
@@ -39,7 +38,6 @@ function DocBody({ kind }) {
   if (kind.startsWith("models/")) return <ModelDoc modelKey={kind.slice("models/".length)} />;
   if (kind === "api") return <ApiList />;
   if (kind.startsWith("api/")) return <ApiDoc rest={kind.slice(4)} />;
-  if (kind === "billing/recharge") return <Markdown text={"# 积分充值\n\n创建订单：POST /v1/auth/payments/recharge-package 或 POST /v1/payments/recharge。\n\n收银台确认后，订单 status 变为 paid，积分才会入账。不要解析支付链接，以订单状态为准。\n\n优惠券在下单时传入 coupon_code。演示券 WELCOME100 加赠 100 积分。"} />;
   if (kind === "billing/membership") return <Markdown text={"# 会员升级\n\nGET /v1/platform/membership-plans 读取方案。\n\nPOST /v1/auth/membership/orders 创建升级订单。免费方案会立即生效。\n\nPOST /v1/auth/membership/downgrade 用于降级。已开通应用数超过新等级上限时会被拒绝。"} />;
   return <p>没有这一页。</p>;
 }
